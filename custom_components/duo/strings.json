@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurer Duo",
+        "description": "Duo est réservé aux couples adultes (18 ans ou plus) et consentants. Indiquez le prénom de chaque partenaire.",
+        "data": {
+          "partner1": "Prénom du partenaire 1",
+          "partner2": "Prénom du partenaire 2",
+          "consent": "Nous certifions avoir 18 ans ou plus et utiliser cette application d'un commun accord"
+        }
+      }
+    },
+    "error": {
+      "missing_name": "Merci de renseigner le prénom des deux partenaires.",
+      "same_name": "Merci d'utiliser deux prénoms différents.",
+      "consent_required": "La confirmation de majorité et de consentement mutuel est obligatoire."
+    },
+    "abort": {
+      "already_configured": "Ce couple est déjà configuré."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_suggestion": { "name": "Suggestion en cours" },
+      "timer": { "name": "Minuteur" },
+      "history": { "name": "Historique" }
+    }
+  }
+}

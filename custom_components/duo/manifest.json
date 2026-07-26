@@ -1,0 +1,11 @@
+{
+  "domain": "duo",
+  "name": "Duo - Intimité de couple",
+  "codeowners": ["@Jallard-fr"],
+  "config_flow": true,
+  "documentation": "https://github.com/Jallard-fr/duo",
+  "issue_tracker": "https://github.com/Jallard-fr/duo/issues",
+  "iot_class": "calculated",
+  "requirements": [],
+  "version": "0.1.0"
+}

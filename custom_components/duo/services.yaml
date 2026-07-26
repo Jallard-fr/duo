@@ -1,0 +1,183 @@
+set_preference:
+  name: Définir une préférence
+  description: Enregistre le niveau d'intérêt (0 à 5) d'un partenaire pour une catégorie d'activités.
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
+    partner:
+      name: Partenaire
+      description: Prénom du partenaire concerné.
+      required: true
+      selector:
+        text:
+    category:
+      name: Catégorie
+      description: Catégorie d'activités (preliminaires, sensoriel, massage, jeu_de_role, communication, intensite_plus).
+      required: true
+      selector:
+        select:
+          options:
+            - preliminaires
+            - sensoriel
+            - massage
+            - jeu_de_role
+            - communication
+            - intensite_plus
+    rating:
+      name: Note
+      description: Niveau d'intérêt de 0 (pas du tout) à 5 (beaucoup).
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 5
+          step: 1
+
+set_accessories:
+  name: Définir les accessoires
+  description: Met à jour la liste des accessoires disponibles pour le couple.
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
+    accessories:
+      name: Accessoires
+      description: Liste des accessoires disponibles (ex. bandeau, plume, huile de massage).
+      required: true
+      selector:
+        object:
+
+set_mood:
+  name: Définir l'humeur
+  description: Met à jour l'humeur du soir d'un partenaire.
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
+    partner:
+      name: Partenaire
+      description: Prénom du partenaire concerné.
+      required: true
+      selector:
+        text:
+    mood:
+      name: Humeur
+      description: Humeur du soir.
+      required: true
+      selector:
+        select:
+          options:
+            - pas_ce_soir
+            - douceur
+            - curieux
+            - nouveaute
+            - torride
+
+request_suggestion:
+  name: Demander une suggestion
+  description: Propose une nouvelle activité à réaliser.
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
+    turn:
+      name: Tour de
+      description: Prénom du partenaire qui réalisera l'activité (aléatoire si omis).
+      required: false
+      selector:
+        text:
+
+respond_suggestion:
+  name: Répondre à une suggestion
+  description: Accepte ou décline la suggestion en cours.
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
+    response:
+      name: Réponse
+      description: accepted ou declined.
+      required: true
+      selector:
+        select:
+          options:
+            - accepted
+            - declined
+
+start_timer:
+  name: Démarrer le minuteur
+  description: (Re)démarre le minuteur pour l'activité en cours.
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
+    minutes:
+      name: Durée (minutes)
+      description: Durée personnalisée en minutes (sinon durée aléatoire dans la plage de l'activité).
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 60
+          step: 1
+
+stop_timer:
+  name: Arrêter le minuteur
+  description: Arrête le minuteur en cours.
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
+
+reset_session:
+  name: Réinitialiser la session
+  description: Efface la suggestion et le minuteur en cours (le profil est conservé).
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
+
+clear_profile:
+  name: Réinitialiser le profil du couple
+  description: Efface le profil complet du couple (préférences, accessoires, historique).
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
