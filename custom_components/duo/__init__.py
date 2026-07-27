@@ -10,6 +10,7 @@ from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
@@ -36,7 +37,7 @@ PLATFORMS = ["sensor", "select"]
 # aucune ressource Lovelace à ajouter manuellement.
 URL_BASE = "/duo_frontend"
 CARD_FILE = "duo-card.js"
-CARD_VERSION = "0.2.0"  # à incrémenter à chaque modification du JS
+CARD_VERSION = "0.3.0"  # à incrémenter à chaque modification du JS
 FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
 
 SET_PREFERENCE_SCHEMA = vol.Schema(
@@ -58,8 +59,11 @@ SET_ACCESSORIES_SCHEMA = vol.Schema(
 SET_MOOD_SCHEMA = vol.Schema(
     {
         vol.Required("entry_id"): cv.string,
-        vol.Required("partner"): cv.string,
+        # Facultatif : déduit de l'utilisateur connecté si absent.
+        vol.Optional("partner"): cv.string,
         vol.Required("mood"): vol.In(MOOD_OPTIONS),
+        vol.Optional("accessories"): vol.All(cv.ensure_list, [cv.string]),
+        vol.Optional("new_idea"): vol.Any(cv.string, None),
     }
 )
 
@@ -117,7 +121,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _async_register_services(hass)
 
+    # Recharge l'intégration quand l'association des personnes change.
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+
     return True
+
+
+async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -151,7 +162,25 @@ def _async_register_services(hass: HomeAssistant) -> None:
 
     async def handle_set_mood(call: ServiceCall) -> None:
         coordinator = _get_coordinator(hass, call.data["entry_id"])
-        await coordinator.async_set_mood(call.data["partner"], call.data["mood"])
+        user_id = call.context.user_id
+
+        partner = call.data.get("partner") or coordinator.partner_for_user(user_id)
+        if not partner:
+            raise HomeAssistantError(
+                "Impossible de déterminer le partenaire : associez votre compte "
+                "Home Assistant à une personne dans les options de Duo."
+            )
+        if partner not in coordinator.partners:
+            raise HomeAssistantError(f"Partenaire inconnu : {partner}")
+
+        coordinator.check_mood_permission(partner, user_id)
+
+        await coordinator.async_set_mood(
+            partner,
+            call.data["mood"],
+            accessories=call.data.get("accessories"),
+            new_idea=call.data.get("new_idea"),
+        )
 
     async def handle_request_suggestion(call: ServiceCall) -> None:
         coordinator = _get_coordinator(hass, call.data["entry_id"])
