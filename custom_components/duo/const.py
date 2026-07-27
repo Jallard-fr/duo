@@ -7,6 +7,15 @@ CONF_PARTNER1 = "partner1"
 CONF_PARTNER2 = "partner2"
 CONF_CONSENT = "consent"
 
+# Association partenaire de jeu <-> personne Home Assistant (entités person.*)
+CONF_PERSON1 = "person1"
+CONF_PERSON2 = "person2"
+# Surcharge manuelle des cibles de notification (services notify.*, séparés
+# par des virgules). Laisser vide pour une détection automatique via les
+# appareils mobile_app rattachés à l'utilisateur.
+CONF_NOTIFY1 = "notify1"
+CONF_NOTIFY2 = "notify2"
+
 CATEGORY_PRELIMINAIRES = "preliminaires"
 CATEGORY_SENSORIEL = "sensoriel"
 CATEGORY_MASSAGE = "massage"
@@ -54,6 +63,37 @@ MOOD_LABELS = {
     MOOD_TORRID: "Envie de torride",
 }
 
+# Intensité de l'envie, de 0 (aucune) à 4 (maximale).
+MOOD_INTENSITY = {
+    MOOD_NOT_TONIGHT: 0,
+    MOOD_TENDERNESS: 1,
+    MOOD_CURIOUS: 2,
+    MOOD_NOVELTY: 3,
+    MOOD_TORRID: 4,
+}
+
+MOOD_EMOJI = {
+    MOOD_NOT_TONIGHT: "😴",
+    MOOD_TENDERNESS: "💗",
+    MOOD_CURIOUS: "😏",
+    MOOD_NOVELTY: "✨",
+    MOOD_TORRID: "🔥",
+}
+
+MOOD_MAX_INTENSITY = 4
+
+
+def mood_gauge(mood: str) -> str:
+    """Jauge visuelle de l'envie, ex. ❤️❤️🤍🤍."""
+    level = MOOD_INTENSITY.get(mood, 0)
+    return "❤️" * level + "🤍" * (MOOD_MAX_INTENSITY - level)
+
+
+# Valeur spéciale renvoyée quand le partenaire ne sait pas encore ce qu'il
+# aurait envie d'essayer de nouveau.
+NEW_IDEA_UNKNOWN = "__unknown__"
+NEW_IDEA_UNKNOWN_LABEL = "Rien de précis, à découvrir ensemble"
+
 STATUS_IDLE = "idle"
 STATUS_PROPOSED = "proposed"
 STATUS_ACCEPTED = "accepted"
@@ -84,4 +124,7 @@ DEFAULT_PROFILE = {
     "moods": {},  # {partner: mood}
     "declined": {},  # {activity_id: iso_timestamp}
     "history": [],  # list of {activity_id, response, timestamp, turn}
+    # État de la soirée en cours, remis à zéro chaque nuit à minuit.
+    # {partner: {"accessories": [...], "new_idea": str|None, "updated": iso}}
+    "evening": {},
 }
