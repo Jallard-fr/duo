@@ -7,6 +7,9 @@ URL_BASE = "/duo_frontend"
 CARD_FILE = "duo-card.js"
 CARD_VERSION = "0.1.0"
 FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
+
+await _async_register_frontend(hass)
+
 from __future__ import annotations
 
 import voluptuous as vol
@@ -184,3 +187,17 @@ def _async_register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, SERVICE_CLEAR_PROFILE, handle_clear_profile, schema=ENTRY_ONLY_SCHEMA
     )
+    async def _async_register_frontend(hass: HomeAssistant) -> None:
+    if hass.data.get(FRONTEND_KEY):
+        return
+    await hass.http.async_register_static_paths(
+        [
+            StaticPathConfig(
+                URL_BASE,
+                str(Path(__file__).parent / "frontend"),
+                False,
+            )
+        ]
+    )
+add_extra_js_url(hass, f"{URL_BASE}/{CARD_FILE}?v={CARD_VERSION}")
+hass.data[FRONTEND_KEY] = True
