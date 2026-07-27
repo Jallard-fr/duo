@@ -8,19 +8,29 @@ import random
 from datetime import datetime, timedelta
 
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import async_track_time_change, async_track_time_interval
 from homeassistant.helpers.storage import Store
-from homeassistant.util import dt as dt_util
+from homeassistant.util import dt as dt_util, slugify
 
 from .activities import ACTIVITIES, get_activity
 from .const import (
+    CONF_NOTIFY1,
+    CONF_NOTIFY2,
     CONF_PARTNER1,
     CONF_PARTNER2,
+    CONF_PERSON1,
+    CONF_PERSON2,
     DECLINE_COOLDOWN_DAYS,
     DEFAULT_PROFILE,
+    MOOD_EMOJI,
+    MOOD_INTENSITY,
+    MOOD_LABELS,
     MOOD_NOT_TONIGHT,
     MOOD_NOVELTY,
+    NEW_IDEA_UNKNOWN,
+    NEW_IDEA_UNKNOWN_LABEL,
     SIGNAL_UPDATE,
     STATUS_ACCEPTED,
     STATUS_COMPLETED,
@@ -29,6 +39,7 @@ from .const import (
     STATUS_IN_PROGRESS,
     STATUS_PROPOSED,
     STORAGE_VERSION,
+    mood_gauge,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,6 +62,7 @@ class DuoCoordinator:
         self.timer_remaining_seconds: int = 0
         self.timer_running: bool = False
         self._timer_unsub = None
+        self._midnight_unsub = None
 
     @property
     def partners(self) -> list[str]:
@@ -62,6 +74,89 @@ class DuoCoordinator:
             return partners[1]
         return partners[0]
 
+    # ------------------------------------------------------------------
+    # Association partenaire <-> personne Home Assistant
+    # ------------------------------------------------------------------
+
+    def person_entity_for(self, partner: str) -> str | None:
+        """Entité person.* associée au partenaire, si configurée."""
+        key = CONF_PERSON1 if partner == self.partners[0] else CONF_PERSON2
+        value = self.entry.options.get(key) or self.entry.data.get(key)
+        return value or None
+
+    def user_id_for(self, partner: str) -> str | None:
+        """Identifiant d'utilisateur HA associé au partenaire."""
+        entity_id = self.person_entity_for(partner)
+        if not entity_id:
+            return None
+        state = self.hass.states.get(entity_id)
+        if state is None:
+            return None
+        return state.attributes.get("user_id")
+
+    def partner_for_user(self, user_id: str | None) -> str | None:
+        """Partenaire correspondant à un utilisateur HA connecté."""
+        if not user_id:
+            return None
+        for partner in self.partners:
+            if self.user_id_for(partner) == user_id:
+                return partner
+        return None
+
+    @property
+    def mapping_configured(self) -> bool:
+        """Vrai si au moins un partenaire est associé à une personne."""
+        return any(self.person_entity_for(p) for p in self.partners)
+
+    def check_mood_permission(self, partner: str, user_id: str | None) -> None:
+        """Vérifie qu'un utilisateur a le droit de modifier cette humeur.
+
+        - user_id None : appel interne (automatisation, réinitialisation) → autorisé.
+        - Aucune association configurée → autorisé (compatibilité ascendante).
+        - Sinon, seul le propriétaire de l'humeur peut la modifier.
+        """
+        if user_id is None or not self.mapping_configured:
+            return
+        owner = self.user_id_for(partner)
+        if owner is None:
+            return
+        if owner != user_id:
+            raise HomeAssistantError(
+                f"Seul·e {partner} peut modifier son humeur. "
+                "Chacun gère uniquement la sienne."
+            )
+
+    # ------------------------------------------------------------------
+    # Notifications
+    # ------------------------------------------------------------------
+
+    def notify_services_for(self, partner: str) -> list[str]:
+        """Services notify.* couvrant tous les appareils du partenaire."""
+        key = CONF_NOTIFY1 if partner == self.partners[0] else CONF_NOTIFY2
+        manual = (self.entry.options.get(key) or "").strip()
+        if manual:
+            return [
+                s.strip().replace("notify.", "")
+                for s in manual.split(",")
+                if s.strip()
+            ]
+
+        user_id = self.user_id_for(partner)
+        if not user_id:
+            return []
+
+        services: list[str] = []
+        for entry in self.hass.config_entries.async_entries("mobile_app"):
+            if entry.data.get("user_id") != user_id:
+                continue
+            device_name = entry.data.get("device_name")
+            if not device_name:
+                continue
+            service = f"mobile_app_{slugify(device_name)}"
+            if self.hass.services.has_service("notify", service):
+                services.append(service)
+        return services
+
     async def async_load(self) -> None:
         stored = await self.store.async_load()
         if stored:
@@ -69,6 +164,12 @@ class DuoCoordinator:
         for partner in self.partners:
             self.profile.setdefault("preferences", {}).setdefault(partner, {})
             self.profile.setdefault("moods", {}).setdefault(partner, MOOD_NOT_TONIGHT)
+            self.profile.setdefault("evening", {}).setdefault(partner, {})
+
+        # Remise à zéro automatique chaque nuit à minuit (heure locale).
+        self._midnight_unsub = async_track_time_change(
+            self.hass, self._async_midnight_reset, hour=0, minute=0, second=0
+        )
 
     async def async_save(self) -> None:
         await self.store.async_save(self.profile)
@@ -87,10 +188,130 @@ class DuoCoordinator:
         await self.async_save()
         self._signal()
 
-    async def async_set_mood(self, partner: str, mood: str) -> None:
-        self.profile.setdefault("moods", {})[partner] = mood
+    async def async_set_mood(
+        self,
+        partner: str,
+        mood: str,
+        accessories: list[str] | None = None,
+        new_idea: str | None = None,
+        notify: bool = True,
+    ) -> None:
+        """Enregistre l'humeur du soir d'un partenaire et prévient l'autre."""
+        previous = self.profile.setdefault("moods", {}).get(partner)
+        evening = self.profile.setdefault("evening", {}).setdefault(partner, {})
+        previous_evening = dict(evening)
+
+        self.profile["moods"][partner] = mood
+
+        # L'envie de nouveauté est la seule à porter une idée libre.
+        if mood != MOOD_NOVELTY:
+            new_idea = None
+
+        evening["accessories"] = list(accessories or [])
+        evening["new_idea"] = new_idea
+        evening["updated"] = dt_util.now().isoformat(timespec="seconds")
+
         await self.async_save()
         self._signal()
+
+        changed = (
+            previous != mood
+            or previous_evening.get("accessories") != evening["accessories"]
+            or previous_evening.get("new_idea") != evening["new_idea"]
+        )
+        if notify and changed:
+            await self._async_notify_partner(partner, mood, evening)
+
+    def evening_state(self, partner: str) -> dict:
+        """État de la soirée pour un partenaire, prêt à être exposé."""
+        mood = self.profile.get("moods", {}).get(partner, MOOD_NOT_TONIGHT)
+        evening = self.profile.get("evening", {}).get(partner, {})
+        new_idea = evening.get("new_idea")
+        return {
+            "mood": mood,
+            "mood_label": MOOD_LABELS.get(mood, mood),
+            "emoji": MOOD_EMOJI.get(mood, ""),
+            "intensity": MOOD_INTENSITY.get(mood, 0),
+            "gauge": mood_gauge(mood),
+            "accessories": list(evening.get("accessories") or []),
+            "new_idea": new_idea,
+            "new_idea_label": (
+                NEW_IDEA_UNKNOWN_LABEL if new_idea == NEW_IDEA_UNKNOWN else new_idea
+            ),
+            "updated": evening.get("updated"),
+            "person": self.person_entity_for(partner),
+            "user_id": self.user_id_for(partner),
+        }
+
+    def _build_notification(self, partner: str, mood: str, evening: dict) -> tuple[str, str]:
+        """Titre et corps du message envoyé à l'autre partenaire."""
+        emoji = MOOD_EMOJI.get(mood, "")
+        label = MOOD_LABELS.get(mood, mood)
+        title = f"Duo 💞 — {partner}"
+
+        lines = [f"{emoji} {partner} : {label}", mood_gauge(mood)]
+
+        accessories = evening.get("accessories") or []
+        if accessories:
+            lines.append("🧺 Accessoires proposés : " + ", ".join(accessories))
+
+        if mood == MOOD_NOVELTY:
+            idea = evening.get("new_idea")
+            if idea == NEW_IDEA_UNKNOWN or not idea:
+                lines.append(f"✨ {NEW_IDEA_UNKNOWN_LABEL}")
+            else:
+                lines.append(f"✨ Idée en tête : {idea}")
+
+        return title, "\n".join(lines)
+
+    async def _async_notify_partner(self, partner: str, mood: str, evening: dict) -> None:
+        """Diffuse l'humeur à tous les appareils de l'autre partenaire."""
+        target = self.other_partner(partner)
+        services = self.notify_services_for(target)
+        if not services:
+            _LOGGER.debug(
+                "Duo : aucun appareil de notification trouvé pour %s", target
+            )
+            return
+
+        title, message = self._build_notification(partner, mood, evening)
+        payload = {
+            "title": title,
+            "message": message,
+            "data": {
+                "channel": "Duo",
+                "importance": "high",
+                # Masque le contenu sur l'écran verrouillé (Android).
+                "visibility": "private",
+                "notification_icon": "mdi:heart",
+                "tag": f"duo_mood_{slugify(partner)}",
+            },
+        }
+
+        for service in services:
+            try:
+                await self.hass.services.async_call(
+                    "notify", service, payload, blocking=False
+                )
+            except Exception:  # noqa: BLE001 - un appareil absent ne doit rien casser
+                _LOGGER.warning("Duo : échec de notification via notify.%s", service)
+
+    @callback
+    def _async_midnight_reset(self, _now) -> None:
+        """Remet les humeurs et la soirée à zéro chaque nuit, sans notifier."""
+        self.hass.async_create_task(self._async_do_midnight_reset())
+
+    async def _async_do_midnight_reset(self) -> None:
+        for partner in self.partners:
+            self.profile.setdefault("moods", {})[partner] = MOOD_NOT_TONIGHT
+            self.profile.setdefault("evening", {})[partner] = {
+                "accessories": [],
+                "new_idea": None,
+                "updated": None,
+            }
+        await self.async_save()
+        await self.async_reset_session()
+        _LOGGER.debug("Duo : humeurs réinitialisées (minuit)")
 
     def _is_on_cooldown(self, activity_id: str) -> bool:
         declined_at = self.profile.get("declined", {}).get(activity_id)
@@ -228,8 +449,12 @@ class DuoCoordinator:
         for partner in self.partners:
             self.profile["preferences"][partner] = {}
             self.profile["moods"][partner] = MOOD_NOT_TONIGHT
+            self.profile["evening"][partner] = {}
         await self.async_save()
         await self.async_reset_session()
 
     def async_unload(self) -> None:
         self._async_cancel_timer()
+        if self._midnight_unsub:
+            self._midnight_unsub()
+            self._midnight_unsub = None
