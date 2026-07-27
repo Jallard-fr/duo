@@ -58,7 +58,9 @@ set_accessories:
 
 set_mood:
   name: Définir l'humeur
-  description: Met à jour l'humeur du soir d'un partenaire.
+  description: >-
+    Met à jour l'humeur du soir d'un partenaire, avec les accessoires qu'il
+    propose, et prévient l'autre partenaire sur tous ses appareils.
   fields:
     entry_id:
       name: Intégration
@@ -69,8 +71,11 @@ set_mood:
           integration: duo
     partner:
       name: Partenaire
-      description: Prénom du partenaire concerné.
-      required: true
+      description: >-
+        Prénom du partenaire concerné. Laisser vide pour utiliser la personne
+        associée au compte Home Assistant qui appelle le service. Chacun ne
+        peut modifier que sa propre humeur.
+      required: false
       selector:
         text:
     mood:
@@ -85,6 +90,22 @@ set_mood:
             - curieux
             - nouveaute
             - torride
+    accessories:
+      name: Accessoires proposés
+      description: >-
+        Accessoires que ce partenaire aimerait utiliser ce soir. Ils sont
+        cités dans la notification envoyée à l'autre.
+      required: false
+      selector:
+        object:
+    new_idea:
+      name: Idée nouvelle
+      description: >-
+        Uniquement avec l'humeur « nouveaute » : ce que le partenaire aurait
+        envie d'essayer. Utiliser __unknown__ pour « je ne sais pas encore ».
+      required: false
+      selector:
+        text:
 
 request_suggestion:
   name: Demander une suggestion
