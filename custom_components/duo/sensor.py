@@ -22,6 +22,7 @@ async def async_setup_entry(
             DuoSuggestionSensor(coordinator, entry),
             DuoTimerSensor(coordinator, entry),
             DuoHistorySensor(coordinator, entry),
+            DuoEveningSensor(coordinator, entry),
         ]
     )
 
@@ -129,3 +130,38 @@ class DuoHistorySensor(DuoEntityBase):
     def extra_state_attributes(self) -> dict:
         history = self.coordinator.profile.get("history", [])
         return {"last_entries": history[-10:]}
+
+
+class DuoEveningSensor(DuoEntityBase):
+    """Expose l'état de la soirée : humeurs, accessoires, idées, mapping."""
+
+    _attr_translation_key = "evening"
+    _attr_icon = "mdi:weather-night"
+
+    def __init__(self, coordinator: DuoCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_evening"
+
+    @property
+    def native_value(self) -> str:
+        """Résumé lisible : les deux émoticônes d'humeur."""
+        return " ".join(
+            self.coordinator.evening_state(partner)["emoji"]
+            for partner in self.coordinator.partners
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        partners = self.coordinator.partners
+        return {
+            "partners": partners,
+            "states": {
+                partner: self.coordinator.evening_state(partner)
+                for partner in partners
+            },
+            "available_accessories": list(
+                self.coordinator.profile.get("accessories", [])
+            ),
+            "mapping_configured": self.coordinator.mapping_configured,
+            "entry_id": self.entry.entry_id,
+        }
