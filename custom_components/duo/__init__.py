@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from pathlib import Path
 
 import voluptuous as vol
@@ -11,6 +13,8 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.start import async_at_started
+from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
@@ -29,6 +33,8 @@ from .const import (
 )
 from .coordinator import DuoCoordinator
 
+_LOGGER = logging.getLogger(__name__)
+
 PLATFORMS = ["sensor", "select"]
 
 # --- Carte Lovelace servie par l'intégration -------------------------------
@@ -37,7 +43,7 @@ PLATFORMS = ["sensor", "select"]
 # aucune ressource Lovelace à ajouter manuellement.
 URL_BASE = "/duo_frontend"
 CARD_FILE = "duo-card.js"
-CARD_VERSION = "0.3.0"  # à incrémenter à chaque modification du JS
+CARD_VERSION = "0.3.1"  # à incrémenter à chaque modification du JS
 FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
 
 SET_PREFERENCE_SCHEMA = vol.Schema(
@@ -91,10 +97,27 @@ START_TIMER_SCHEMA = vol.Schema(
 ENTRY_ONLY_SCHEMA = vol.Schema({vol.Required("entry_id"): cv.string})
 
 
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+CARD_URL = f"{URL_BASE}/{CARD_FILE}?v={CARD_VERSION}"
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Enregistre la carte dès le chargement du composant.
+
+    Volontairement ici et non dans async_setup_entry : la carte reste
+    disponible même si l'entrée de configuration échoue à démarrer.
+    """
+    await _async_register_frontend(hass)
+    async_at_started(hass, _async_register_lovelace_resource)
+    return True
+
+
 async def _async_register_frontend(hass: HomeAssistant) -> None:
-    """Sert la carte Lovelace et la déclare au frontend (une seule fois)."""
+    """Sert le fichier de la carte et le déclare au frontend (une seule fois)."""
     if hass.data.get(FRONTEND_KEY):
         return
+    hass.data[FRONTEND_KEY] = True
 
     await hass.http.async_register_static_paths(
         [
@@ -105,13 +128,61 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
             )
         ]
     )
-    add_extra_js_url(hass, f"{URL_BASE}/{CARD_FILE}?v={CARD_VERSION}")
-    hass.data[FRONTEND_KEY] = True
+    add_extra_js_url(hass, CARD_URL)
+    _LOGGER.debug("Duo : carte servie sur %s", CARD_URL)
+
+
+async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
+    """Déclare la carte dans les ressources Lovelace.
+
+    Ceinture et bretelles : add_extra_js_url ne se propage pas toujours aux
+    clients déjà ouverts, alors qu'une ressource enregistrée est persistante
+    et visible dans Paramètres > Tableaux de bord > Ressources.
+    """
+    try:
+        data = hass.data.get("lovelace")
+        if data is None:
+            return
+
+        resources = getattr(data, "resources", None)
+        if resources is None and isinstance(data, dict):
+            resources = data.get("resources")
+
+        # Mode YAML : la collection est en lecture seule, l'utilisateur gère
+        # lui-même ses ressources.
+        if resources is None or not hasattr(resources, "async_create_item"):
+            _LOGGER.debug(
+                "Duo : ressources Lovelace en lecture seule, ajoutez %s à la main",
+                CARD_URL,
+            )
+            return
+
+        if not getattr(resources, "loaded", True):
+            await resources.async_load()
+            resources.loaded = True
+
+        base = f"{URL_BASE}/{CARD_FILE}"
+        for item in resources.async_items():
+            url = str(item.get("url", ""))
+            if url.split("?")[0] != base:
+                continue
+            if url != CARD_URL:
+                await resources.async_update_item(item["id"], {"url": CARD_URL})
+                _LOGGER.info("Duo : ressource Lovelace mise à jour (%s)", CARD_URL)
+            return
+
+        await resources.async_create_item({"res_type": "module", "url": CARD_URL})
+        _LOGGER.info("Duo : ressource Lovelace créée (%s)", CARD_URL)
+    except Exception as err:  # noqa: BLE001 - ne doit jamais bloquer le démarrage
+        _LOGGER.warning(
+            "Duo : impossible d'enregistrer la ressource Lovelace (%s). "
+            "Ajoutez %s manuellement dans Paramètres > Tableaux de bord > Ressources.",
+            err,
+            CARD_URL,
+        )
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    await _async_register_frontend(hass)
-
     coordinator = DuoCoordinator(hass, entry)
     await coordinator.async_load()
 
