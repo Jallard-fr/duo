@@ -53,6 +53,10 @@ class DuoMoodSelect(SelectEntity):
         return MOOD_LABELS.get(mood_key, MOOD_LABELS[MOOD_NOT_TONIGHT])
 
     async def async_select_option(self, option: str) -> None:
+        # Le contexte de l'appel de service porte l'utilisateur HA à l'origine
+        # de l'action : on refuse qu'un partenaire touche l'humeur de l'autre.
+        user_id = self._context.user_id if self._context else None
+        self.coordinator.check_mood_permission(self.partner, user_id)
         mood_key = MOOD_LABEL_TO_KEY.get(option, MOOD_NOT_TONIGHT)
         await self.coordinator.async_set_mood(self.partner, mood_key)
 
