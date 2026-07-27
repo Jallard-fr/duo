@@ -1,7 +1,8 @@
 {
   "name": "Duo - Intimité de couple",
-  "render_readme": true,
   "content_in_root": false,
+  "render_readme": true,
   "country": ["FR"],
-  "homeassistant": "2024.1.0"
+  "homeassistant": "2024.7.0",
+  "hacs": "2.0.0"
 }
