@@ -2,29 +2,50 @@
   "config": {
     "step": {
       "user": {
-        "title": "Configurer Duo",
-        "description": "Duo est réservé aux couples adultes (18 ans ou plus) et consentants. Indiquez le prénom de chaque partenaire.",
+        "title": "Set up Duo",
+        "description": "Duo is intended for consenting adult couples (18+). Enter each partner's first name, and optionally the Home Assistant person they map to: each person will then only be able to change their own mood.",
         "data": {
-          "partner1": "Prénom du partenaire 1",
-          "partner2": "Prénom du partenaire 2",
-          "consent": "Nous certifions avoir 18 ans ou plus et utiliser cette application d'un commun accord"
+          "partner1": "First partner's name",
+          "partner2": "Second partner's name",
+          "person1": "Home Assistant person for partner 1",
+          "person2": "Home Assistant person for partner 2",
+          "consent": "We confirm that we are 18 or older and are using this application by mutual agreement"
         }
       }
     },
     "error": {
-      "missing_name": "Merci de renseigner le prénom des deux partenaires.",
-      "same_name": "Merci d'utiliser deux prénoms différents.",
-      "consent_required": "La confirmation de majorité et de consentement mutuel est obligatoire."
+      "missing_name": "Please provide a name for both partners.",
+      "same_name": "Please use two different names.",
+      "same_person": "Please map two different people.",
+      "consent_required": "Confirming adulthood and mutual consent is required."
     },
     "abort": {
-      "already_configured": "Ce couple est déjà configuré."
+      "already_configured": "This couple is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "People and notifications",
+        "description": "Map each partner to a Home Assistant person. Each person will only be able to change their own mood, and notifications will be sent to all of the other partner's mobile devices.",
+        "data": {
+          "person1": "Person mapped to {partner1}",
+          "person2": "Person mapped to {partner2}",
+          "notify1": "Notify services for {partner1} (optional, comma-separated)",
+          "notify2": "Notify services for {partner2} (optional, comma-separated)"
+        }
+      }
+    },
+    "error": {
+      "same_person": "Please map two different people."
     }
   },
   "entity": {
     "sensor": {
-      "current_suggestion": { "name": "Suggestion en cours" },
-      "timer": { "name": "Minuteur" },
-      "history": { "name": "Historique" }
+      "current_suggestion": { "name": "Current suggestion" },
+      "timer": { "name": "Timer" },
+      "history": { "name": "History" },
+      "evening": { "name": "Evening" }
     }
   }
 }
