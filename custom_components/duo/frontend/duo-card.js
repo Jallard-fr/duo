@@ -27,24 +27,75 @@ function fmtTime(totalSeconds) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
+const REQUIRED_FIELDS = [
+  ["entry_id", "Configuration Duo"],
+  ["partner1", "Prénom du partenaire 1"],
+  ["partner2", "Prénom du partenaire 2"],
+  ["suggestion_entity", "Entité suggestion"],
+  ["timer_entity", "Entité minuteur"],
+];
+
+function titleCase(value) {
+  if (!value) return "";
+  return value
+    .split("_")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 class DuoCard extends HTMLElement {
+  // --- Éditeur visuel ------------------------------------------------------
+  static getConfigElement() {
+    return document.createElement("duo-card-editor");
+  }
+
+  // Pré-remplit la carte à l'ajout depuis le sélecteur graphique.
+  static async getStubConfig(hass) {
+    const config = { type: "custom:duo-card" };
+    const ids = Object.keys(hass.states || {});
+    const find = (fn) => ids.find(fn) || "";
+
+    config.suggestion_entity = find(
+      (id) => id.startsWith("sensor.duo_") && id.endsWith("_current_suggestion")
+    );
+    config.timer_entity = find(
+      (id) => id.startsWith("sensor.duo_") && id.endsWith("_timer")
+    );
+    config.history_entity = find(
+      (id) => id.startsWith("sensor.duo_") && id.endsWith("_history")
+    );
+
+    const moods = ids.filter((id) => id.startsWith("select.duo_mood_"));
+    config.mood_entity_partner1 = moods[0] || "";
+    config.mood_entity_partner2 = moods[1] || "";
+    config.partner1 = titleCase((moods[0] || "").replace("select.duo_mood_", ""));
+    config.partner2 = titleCase((moods[1] || "").replace("select.duo_mood_", ""));
+
+    try {
+      const entries = await hass.callWS({
+        type: "config_entries/get",
+        domain: "duo",
+      });
+      const duoEntries = (entries || []).filter((e) => e.domain === "duo");
+      if (duoEntries.length) config.entry_id = duoEntries[0].entry_id;
+    } catch (err) {
+      // L'utilisateur n'est peut-être pas administrateur : champ à saisir.
+    }
+
+    return config;
+  }
+
   setConfig(config) {
-    if (!config.entry_id) {
-      throw new Error("duo-card: 'entry_id' est obligatoire.");
-    }
-    if (!config.partner1 || !config.partner2) {
-      throw new Error("duo-card: 'partner1' et 'partner2' sont obligatoires.");
-    }
-    if (!config.suggestion_entity || !config.timer_entity) {
-      throw new Error(
-        "duo-card: 'suggestion_entity' et 'timer_entity' sont obligatoires."
-      );
-    }
-    this._config = config;
+    this._config = config || {};
     if (!this._root) {
       this._root = this.attachShadow({ mode: "open" });
     }
     this._render();
+  }
+
+  _missingFields() {
+    return REQUIRED_FIELDS.filter(([key]) => !this._config[key]);
   }
 
   set hass(hass) {
@@ -69,6 +120,22 @@ class DuoCard extends HTMLElement {
 
   _render() {
     if (!this._root || !this._hass || !this._config) return;
+
+    const missing = this._missingFields();
+    if (missing.length) {
+      this._root.innerHTML = `
+        <style>
+          ha-card { padding: 16px; }
+          .todo { font-weight: 600; margin-bottom: 8px; }
+          ul { margin: 0; padding-left: 20px; opacity: 0.8; }
+        </style>
+        <ha-card>
+          <div class="todo">💞 Duo — configuration à compléter</div>
+          <ul>${missing.map(([, label]) => `<li>${label}</li>`).join("")}</ul>
+        </ha-card>
+      `;
+      return;
+    }
 
     const cfg = this._config;
     const hass = this._hass;
@@ -303,11 +370,116 @@ class DuoCard extends HTMLElement {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Éditeur visuel de la carte (formulaire natif Home Assistant)
+// ---------------------------------------------------------------------------
+
+const EDITOR_LABELS = {
+  entry_id: "Configuration Duo",
+  partner1: "Prénom du partenaire 1",
+  partner2: "Prénom du partenaire 2",
+  suggestion_entity: "Entité suggestion",
+  timer_entity: "Entité minuteur",
+  history_entity: "Entité historique (facultatif)",
+  mood_entity_partner1: "Humeur du partenaire 1 (facultatif)",
+  mood_entity_partner2: "Humeur du partenaire 2 (facultatif)",
+};
+
+class DuoCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this._config = {};
+    this._entries = [];
+  }
+
+  setConfig(config) {
+    this._config = { ...config };
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    if (!this._entriesRequested) {
+      this._entriesRequested = true;
+      this._loadEntries();
+    }
+    this._render();
+  }
+
+  async _loadEntries() {
+    try {
+      const entries = await this._hass.callWS({
+        type: "config_entries/get",
+        domain: "duo",
+      });
+      this._entries = (entries || [])
+        .filter((e) => e.domain === "duo")
+        .map((e) => ({ value: e.entry_id, label: e.title || e.entry_id }));
+    } catch (err) {
+      this._entries = [];
+    }
+    this._render();
+  }
+
+  _schema() {
+    const entryField = this._entries.length
+      ? {
+          name: "entry_id",
+          required: true,
+          selector: { select: { options: this._entries, mode: "dropdown" } },
+        }
+      : { name: "entry_id", required: true, selector: { text: {} } };
+
+    const sensor = { entity: { domain: "sensor", integration: "duo" } };
+    const select = { entity: { domain: "select", integration: "duo" } };
+
+    return [
+      entryField,
+      { name: "partner1", required: true, selector: { text: {} } },
+      { name: "partner2", required: true, selector: { text: {} } },
+      { name: "suggestion_entity", required: true, selector: sensor },
+      { name: "timer_entity", required: true, selector: sensor },
+      { name: "history_entity", selector: sensor },
+      { name: "mood_entity_partner1", selector: select },
+      { name: "mood_entity_partner2", selector: select },
+    ];
+  }
+
+  _render() {
+    if (!this._hass) return;
+
+    if (!this._form) {
+      this._form = document.createElement("ha-form");
+      this._form.computeLabel = (schema) =>
+        EDITOR_LABELS[schema.name] || schema.name;
+      this._form.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        this._config = { type: "custom:duo-card", ...ev.detail.value };
+        this.dispatchEvent(
+          new CustomEvent("config-changed", {
+            detail: { config: this._config },
+            bubbles: true,
+            composed: true,
+          })
+        );
+      });
+      this.appendChild(this._form);
+    }
+
+    this._form.hass = this._hass;
+    this._form.schema = this._schema();
+    this._form.data = this._config;
+  }
+}
+
 customElements.define("duo-card", DuoCard);
+customElements.define("duo-card-editor", DuoCardEditor);
 
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "duo-card",
   name: "Duo - Intimité de couple",
   description: "Carte textuelle pour piloter l'application d'intimité de couple Duo.",
+  preview: true,
+  documentationURL: "https://github.com/Jallard-fr/duo",
 });
