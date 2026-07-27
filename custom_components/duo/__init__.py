@@ -1,5 +1,12 @@
 """The Duo integration - a couple's intimacy companion for Home Assistant."""
+from pathlib import Path
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 
+URL_BASE = "/duo_frontend"
+CARD_FILE = "duo-card.js"
+CARD_VERSION = "0.1.0"
+FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
 from __future__ import annotations
 
 import voluptuous as vol
