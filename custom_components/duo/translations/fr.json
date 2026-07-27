@@ -3,10 +3,12 @@
     "step": {
       "user": {
         "title": "Configurer Duo",
-        "description": "Duo est réservé aux couples adultes (18 ans ou plus) et consentants. Indiquez le prénom de chaque partenaire.",
+        "description": "Duo est réservé aux couples adultes (18 ans ou plus) et consentants. Indiquez le prénom de chaque partenaire, et si vous le souhaitez la personne Home Assistant associée : chacun ne pourra alors modifier que sa propre humeur.",
         "data": {
           "partner1": "Prénom du partenaire 1",
           "partner2": "Prénom du partenaire 2",
+          "person1": "Personne Home Assistant du partenaire 1",
+          "person2": "Personne Home Assistant du partenaire 2",
           "consent": "Nous certifions avoir 18 ans ou plus et utiliser cette application d'un commun accord"
         }
       }
@@ -14,17 +16,36 @@
     "error": {
       "missing_name": "Merci de renseigner le prénom des deux partenaires.",
       "same_name": "Merci d'utiliser deux prénoms différents.",
+      "same_person": "Merci d'associer deux personnes différentes.",
       "consent_required": "La confirmation de majorité et de consentement mutuel est obligatoire."
     },
     "abort": {
       "already_configured": "Ce couple est déjà configuré."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Personnes et notifications",
+        "description": "Associez chaque partenaire à une personne Home Assistant. Chacun ne pourra modifier que sa propre humeur, et les notifications partiront vers tous les appareils mobiles de l'autre.",
+        "data": {
+          "person1": "Personne associée à {partner1}",
+          "person2": "Personne associée à {partner2}",
+          "notify1": "Services notify de {partner1} (facultatif, séparés par des virgules)",
+          "notify2": "Services notify de {partner2} (facultatif, séparés par des virgules)"
+        }
+      }
+    },
+    "error": {
+      "same_person": "Merci d'associer deux personnes différentes."
+    }
+  },
   "entity": {
     "sensor": {
       "current_suggestion": { "name": "Suggestion en cours" },
       "timer": { "name": "Minuteur" },
-      "history": { "name": "Historique" }
+      "history": { "name": "Historique" },
+      "evening": { "name": "Soirée" }
     }
   }
 }
