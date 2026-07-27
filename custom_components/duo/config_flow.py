@@ -14,21 +14,33 @@ from .const import (
     CONF_NOTIFY1,
     CONF_NOTIFY2,
     CONF_PARTNER1,
+    CONF_PARTNER1_SEX,
     CONF_PARTNER2,
+    CONF_PARTNER2_SEX,
     CONF_PERSON1,
     CONF_PERSON2,
     DOMAIN,
+    PARTNER_SEX_OPTIONS,
 )
 
 PERSON_SELECTOR = selector.EntitySelector(
     selector.EntitySelectorConfig(domain="person")
 )
 TEXT_SELECTOR = selector.TextSelector()
+SEX_SELECTOR = selector.SelectSelector(
+    selector.SelectSelectorConfig(
+        options=PARTNER_SEX_OPTIONS,
+        translation_key="partner_sex",
+        mode=selector.SelectSelectorMode.DROPDOWN,
+    )
+)
 
 STEP_USER_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_PARTNER1): str,
+        vol.Required(CONF_PARTNER1_SEX): SEX_SELECTOR,
         vol.Required(CONF_PARTNER2): str,
+        vol.Required(CONF_PARTNER2_SEX): SEX_SELECTOR,
         vol.Optional(CONF_PERSON1): PERSON_SELECTOR,
         vol.Optional(CONF_PERSON2): PERSON_SELECTOR,
         vol.Required(CONF_CONSENT, default=False): bool,
@@ -65,7 +77,9 @@ class DuoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     title=f"Duo - {partner1} & {partner2}",
                     data={
                         CONF_PARTNER1: partner1,
+                        CONF_PARTNER1_SEX: user_input[CONF_PARTNER1_SEX],
                         CONF_PARTNER2: partner2,
+                        CONF_PARTNER2_SEX: user_input[CONF_PARTNER2_SEX],
                     },
                     options={
                         CONF_PERSON1: person1 or "",

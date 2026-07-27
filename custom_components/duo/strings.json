@@ -6,7 +6,9 @@
         "description": "Duo est réservé aux couples adultes (18 ans ou plus) et consentants. Indiquez le prénom de chaque partenaire, et si vous le souhaitez la personne Home Assistant associée : chacun ne pourra alors modifier que sa propre humeur.",
         "data": {
           "partner1": "Prénom du partenaire 1",
+          "partner1_sex": "Sexe du partenaire 1",
           "partner2": "Prénom du partenaire 2",
+          "partner2_sex": "Sexe du partenaire 2",
           "person1": "Personne Home Assistant du partenaire 1",
           "person2": "Personne Home Assistant du partenaire 2",
           "consent": "Nous certifions avoir 18 ans ou plus et utiliser cette application d'un commun accord"
@@ -21,6 +23,14 @@
     },
     "abort": {
       "already_configured": "Ce couple est déjà configuré."
+    }
+  },
+  "selector": {
+    "partner_sex": {
+      "options": {
+        "homme": "Homme",
+        "femme": "Femme"
+      }
     }
   },
   "options": {

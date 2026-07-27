@@ -5,7 +5,25 @@ STORAGE_VERSION = 1
 
 CONF_PARTNER1 = "partner1"
 CONF_PARTNER2 = "partner2"
+CONF_PARTNER1_SEX = "partner1_sex"
+CONF_PARTNER2_SEX = "partner2_sex"
 CONF_CONSENT = "consent"
+
+SEX_HOMME = "homme"
+SEX_FEMME = "femme"
+SEX_INDIFFERENT = "indifferent"
+
+# Un partenaire est "homme" ou "femme". Les activités acceptent en plus
+# "indifferent" pour leurs champs actor_sex/receiver_sex, ce qui signifie
+# que l'activité s'applique quel que soit le sexe de ce partenaire.
+PARTNER_SEX_OPTIONS = [SEX_HOMME, SEX_FEMME]
+ACTIVITY_SEX_OPTIONS = [SEX_HOMME, SEX_FEMME, SEX_INDIFFERENT]
+
+SEX_LABELS = {
+    SEX_HOMME: "Homme",
+    SEX_FEMME: "Femme",
+    SEX_INDIFFERENT: "Indifférent",
+}
 
 # Association partenaire de jeu <-> personne Home Assistant (entités person.*)
 CONF_PERSON1 = "person1"

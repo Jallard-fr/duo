@@ -5,6 +5,16 @@ The application proposes a theme and a mood, never an explicit, step by
 step description of a sexual act. It is up to the couple to decide, in
 the moment and within the limits they set in their own profile, how far
 they want to take any given suggestion.
+
+Each activity also carries an ``actor_sex`` and a ``receiver_sex`` field
+(``homme``, ``femme`` or ``indifferent``). The actor is the partner whose
+turn it is to perform the activity, the receiver is the other partner.
+An activity is only proposed for a given turn if the sex of the current
+actor and receiver matches these fields (``indifferent`` always matches).
+The catalog below ships with every entry set to ``indifferent`` on both
+fields, since the content stays intentionally non-explicit; edit these
+values if you want specific suggestions to only apply to certain
+combinations of partner sexes.
 """
 
 from .const import (
@@ -14,6 +24,7 @@ from .const import (
     CATEGORY_MASSAGE,
     CATEGORY_PRELIMINAIRES,
     CATEGORY_SENSORIEL,
+    SEX_INDIFFERENT,
 )
 
 # intensity: 1 (très doux) -> 5 (torride)
@@ -27,6 +38,8 @@ ACTIVITIES = [
         "duration_min": 2,
         "duration_max": 10,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "preliminaires_compliment",
@@ -37,6 +50,8 @@ ACTIVITIES = [
         "duration_min": 2,
         "duration_max": 5,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "preliminaires_caresses_guidees",
@@ -47,6 +62,8 @@ ACTIVITIES = [
         "duration_min": 3,
         "duration_max": 10,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "preliminaires_striptease",
@@ -57,6 +74,8 @@ ACTIVITIES = [
         "duration_min": 3,
         "duration_max": 8,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "sensoriel_bandeau",
@@ -67,6 +86,8 @@ ACTIVITIES = [
         "duration_min": 5,
         "duration_max": 15,
         "accessory": "bandeau",
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "sensoriel_glacon",
@@ -77,6 +98,8 @@ ACTIVITIES = [
         "duration_min": 5,
         "duration_max": 10,
         "accessory": "glaçons",
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "sensoriel_plume",
@@ -87,6 +110,8 @@ ACTIVITIES = [
         "duration_min": 5,
         "duration_max": 10,
         "accessory": "plume",
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "massage_huile",
@@ -97,6 +122,8 @@ ACTIVITIES = [
         "duration_min": 10,
         "duration_max": 20,
         "accessory": "huile de massage",
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "massage_dos",
@@ -107,6 +134,8 @@ ACTIVITIES = [
         "duration_min": 5,
         "duration_max": 15,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "jeu_de_role_rencontre",
@@ -117,6 +146,8 @@ ACTIVITIES = [
         "duration_min": 10,
         "duration_max": 20,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "jeu_de_role_scenario",
@@ -127,6 +158,8 @@ ACTIVITIES = [
         "duration_min": 10,
         "duration_max": 20,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "jeu_de_role_ordres_doux",
@@ -137,6 +170,8 @@ ACTIVITIES = [
         "duration_min": 5,
         "duration_max": 15,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "communication_fantasme",
@@ -147,6 +182,8 @@ ACTIVITIES = [
         "duration_min": 5,
         "duration_max": 15,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "communication_question_torride",
@@ -157,6 +194,8 @@ ACTIVITIES = [
         "duration_min": 5,
         "duration_max": 10,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "communication_liste_envies",
@@ -167,6 +206,8 @@ ACTIVITIES = [
         "duration_min": 5,
         "duration_max": 15,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "intensite_carte_blanche",
@@ -177,6 +218,8 @@ ACTIVITIES = [
         "duration_min": 10,
         "duration_max": 30,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "intensite_nouveaute",
@@ -187,6 +230,8 @@ ACTIVITIES = [
         "duration_min": 10,
         "duration_max": 25,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "intensite_negociation",
@@ -197,6 +242,8 @@ ACTIVITIES = [
         "duration_min": 10,
         "duration_max": 30,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
     {
         "id": "intensite_rythme",
@@ -207,6 +254,8 @@ ACTIVITIES = [
         "duration_min": 10,
         "duration_max": 20,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
     },
 ]
 

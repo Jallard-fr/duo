@@ -19,7 +19,9 @@ from .const import (
     CONF_NOTIFY1,
     CONF_NOTIFY2,
     CONF_PARTNER1,
+    CONF_PARTNER1_SEX,
     CONF_PARTNER2,
+    CONF_PARTNER2_SEX,
     CONF_PERSON1,
     CONF_PERSON2,
     DECLINE_COOLDOWN_DAYS,
@@ -31,6 +33,7 @@ from .const import (
     MOOD_NOVELTY,
     NEW_IDEA_UNKNOWN,
     NEW_IDEA_UNKNOWN_LABEL,
+    SEX_INDIFFERENT,
     SIGNAL_UPDATE,
     STATUS_ACCEPTED,
     STATUS_COMPLETED,
@@ -73,6 +76,12 @@ class DuoCoordinator:
         if partner == partners[0]:
             return partners[1]
         return partners[0]
+
+    def sex_of(self, partner: str) -> str:
+        partners = self.partners
+        if partner == partners[0]:
+            return self.entry.data[CONF_PARTNER1_SEX]
+        return self.entry.data[CONF_PARTNER2_SEX]
 
     # ------------------------------------------------------------------
     # Association partenaire <-> personne Home Assistant
@@ -344,14 +353,33 @@ class DuoCoordinator:
                 weight *= 0.05
         return weight
 
+    def _matches_sex(self, activity: dict, actor_sex: str, receiver_sex: str) -> bool:
+        activity_actor_sex = activity.get("actor_sex", SEX_INDIFFERENT)
+        activity_receiver_sex = activity.get("receiver_sex", SEX_INDIFFERENT)
+        actor_ok = activity_actor_sex in (SEX_INDIFFERENT, actor_sex)
+        receiver_ok = activity_receiver_sex in (SEX_INDIFFERENT, receiver_sex)
+        return actor_ok and receiver_ok
+
     async def async_request_suggestion(self, turn: str | None = None) -> dict:
-        """Pick a new activity and propose it to `turn` (the partner performing it)."""
+        """Pick a new activity and propose it to `turn` (the partner performing it,
+        i.e. the actor). The other partner is the receiver."""
         partners = self.partners
         if turn not in partners:
             turn = random.choice(partners)
         proposer = self.other_partner(turn)
+        actor_sex = self.sex_of(turn)
+        receiver_sex = self.sex_of(proposer)
 
-        candidates = ACTIVITIES
+        candidates = [
+            activity
+            for activity in ACTIVITIES
+            if self._matches_sex(activity, actor_sex, receiver_sex)
+        ]
+        if not candidates:
+            # Filet de sécurité : ne jamais se retrouver sans aucun candidat,
+            # par ex. si le catalogue a été personnalisé de façon trop stricte.
+            candidates = ACTIVITIES
+
         weights = [self._weight_for(activity, proposer) for activity in candidates]
         if sum(weights) <= 0:
             weights = [1.0 for _ in candidates]
