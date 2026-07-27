@@ -1,19 +1,13 @@
 """The Duo integration - a couple's intimacy companion for Home Assistant."""
-from pathlib import Path
-from homeassistant.components.frontend import add_extra_js_url
-from homeassistant.components.http import StaticPathConfig
-
-URL_BASE = "/duo_frontend"
-CARD_FILE = "duo-card.js"
-CARD_VERSION = "0.1.0"
-FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
-
-await _async_register_frontend(hass)
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import voluptuous as vol
 
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
@@ -35,6 +29,15 @@ from .const import (
 from .coordinator import DuoCoordinator
 
 PLATFORMS = ["sensor", "select"]
+
+# --- Carte Lovelace servie par l'intégration -------------------------------
+# Le fichier custom_components/duo/frontend/duo-card.js est exposé sur
+# /duo_frontend/duo-card.js puis déclaré automatiquement au frontend :
+# aucune ressource Lovelace à ajouter manuellement.
+URL_BASE = "/duo_frontend"
+CARD_FILE = "duo-card.js"
+CARD_VERSION = "0.1.0"  # à incrémenter à chaque modification du JS
+FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
 
 SET_PREFERENCE_SCHEMA = vol.Schema(
     {
@@ -84,7 +87,27 @@ START_TIMER_SCHEMA = vol.Schema(
 ENTRY_ONLY_SCHEMA = vol.Schema({vol.Required("entry_id"): cv.string})
 
 
+async def _async_register_frontend(hass: HomeAssistant) -> None:
+    """Sert la carte Lovelace et la déclare au frontend (une seule fois)."""
+    if hass.data.get(FRONTEND_KEY):
+        return
+
+    await hass.http.async_register_static_paths(
+        [
+            StaticPathConfig(
+                URL_BASE,
+                str(Path(__file__).parent / "frontend"),
+                False,
+            )
+        ]
+    )
+    add_extra_js_url(hass, f"{URL_BASE}/{CARD_FILE}?v={CARD_VERSION}")
+    hass.data[FRONTEND_KEY] = True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    await _async_register_frontend(hass)
+
     coordinator = DuoCoordinator(hass, entry)
     await coordinator.async_load()
 
@@ -187,17 +210,3 @@ def _async_register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, SERVICE_CLEAR_PROFILE, handle_clear_profile, schema=ENTRY_ONLY_SCHEMA
     )
-    async def _async_register_frontend(hass: HomeAssistant) -> None:
-    if hass.data.get(FRONTEND_KEY):
-        return
-    await hass.http.async_register_static_paths(
-        [
-            StaticPathConfig(
-                URL_BASE,
-                str(Path(__file__).parent / "frontend"),
-                False,
-            )
-        ]
-    )
-add_extra_js_url(hass, f"{URL_BASE}/{CARD_FILE}?v={CARD_VERSION}")
-hass.data[FRONTEND_KEY] = True
