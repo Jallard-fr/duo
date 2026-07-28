@@ -10,6 +10,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_ACCESSORIES,
     CONF_CONSENT,
     CONF_NOTIFY1,
     CONF_NOTIFY2,
@@ -104,20 +105,34 @@ class DuoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class DuoOptionsFlow(config_entries.OptionsFlow):
-    """Permet de (re)définir l'association partenaire <-> personne HA."""
+    """Permet de (re)définir l'association partenaire <-> personne HA,
+    ainsi que la liste des accessoires du couple."""
+
+    def _coordinator(self):
+        return self.hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id)
 
     async def async_step_init(self, user_input: dict | None = None) -> FlowResult:
         errors: dict[str, str] = {}
         entry = self.config_entry
         partner1 = entry.data[CONF_PARTNER1]
         partner2 = entry.data[CONF_PARTNER2]
+        coordinator = self._coordinator()
+        current_accessories = ", ".join(
+            coordinator.profile.get("accessories", []) if coordinator else []
+        )
 
         if user_input is not None:
             person1 = user_input.get(CONF_PERSON1) or ""
             person2 = user_input.get(CONF_PERSON2) or ""
+            accessories_raw = user_input.pop(CONF_ACCESSORIES, "")
             if person1 and person1 == person2:
                 errors["base"] = "same_person"
             else:
+                if coordinator is not None:
+                    accessories = [
+                        item.strip() for item in accessories_raw.split(",") if item.strip()
+                    ]
+                    await coordinator.async_set_accessories(accessories)
                 return self.async_create_entry(title="", data=user_input)
 
         options = entry.options
@@ -138,6 +153,10 @@ class DuoOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_NOTIFY2,
                     description={"suggested_value": options.get(CONF_NOTIFY2) or ""},
+                ): TEXT_SELECTOR,
+                vol.Optional(
+                    CONF_ACCESSORIES,
+                    description={"suggested_value": current_accessories},
                 ): TEXT_SELECTOR,
             }
         )

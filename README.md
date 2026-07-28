@@ -14,7 +14,7 @@ Duo est une intégration [Home Assistant](https://www.home-assistant.io/) + une 
 - **Suggestions à tour de rôle**, pondérées selon les préférences, l'humeur, le sexe acteur/récepteur et les accessoires disponibles.
 - **Chronomètre** intégré, avec une durée aléatoire dans la plage définie pour chaque activité (ou personnalisable).
 - **Mémoire du couple** : les activités déclinées sont mises "en pause" (14 jours par défaut) et ne sont proposées à nouveau automatiquement que si le partenaire concerné choisit explicitement l'humeur "Envie de nouveauté".
-- **Gestion des accessoires** disponibles au sein du couple, utilisés pour filtrer les suggestions compatibles.
+- **Gestion des accessoires** disponibles au sein du couple, utilisés pour filtrer les suggestions compatibles — modifiable depuis la carte ou directement depuis les options de l'intégration.
 - **Réinitialisation automatique à minuit** des humeurs du soir.
 - **Historique** des dernières sessions (activité, réponse, tour).
 
@@ -55,7 +55,7 @@ La carte Lovelace est servie automatiquement par l'intégration (`/duo_frontend/
 
 1. **Paramètres → Appareils et services → Ajouter une intégration → Duo**.
 2. Renseignez le prénom et le sexe (homme/femme) de chaque partenaire, associez éventuellement chacun à une **personne Home Assistant** (`person.*`), puis confirmez la case de majorité/consentement mutuel (obligatoire).
-3. Dans les **options** de l'intégration, vous pouvez ajuster l'association personne/notify à tout moment, ou surcharger manuellement les services `notify.*` utilisés.
+3. Dans les **options** de l'intégration (Paramètres → Appareils et services → Duo → Configurer), vous pouvez à tout moment ajuster l'association personne/notify, surcharger manuellement les services `notify.*` utilisés, et **modifier la liste des accessoires du couple** (séparés par des virgules) — sans passer par la carte.
 4. Notez l'`entry_id` généré si besoin (visible via **Outils de développement → Modèles** avec `{{ config_entries()|selectattr('domain','eq','duo')|map(attribute='entry_id')|list }}`).
 
 ## Ajouter la carte au tableau de bord

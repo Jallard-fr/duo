@@ -173,6 +173,7 @@ class DuoCard extends HTMLElement {
 
   setConfig(config) {
     this._config = config || {};
+    this._detailsOpen = this._detailsOpen || {};
     if (!this._root) {
       this._root = this.attachShadow({ mode: "open" });
     }
@@ -615,7 +616,7 @@ class DuoCard extends HTMLElement {
           </div>
         </div>
 
-        <details class="section">
+        <details class="section" id="prefsDetails" ${this._detailsOpen.prefs ? "open" : ""}>
           <summary>Préférences &amp; accessoires</summary>
           <h3>Préférences de ${cfg.partner1}</h3>
           ${CATEGORIES.map(
@@ -636,8 +637,10 @@ class DuoCard extends HTMLElement {
           `
           ).join("")}
           <h3>Accessoires disponibles</h3>
+          <div class="note">La liste actuelle est pré-remplie ci-dessous : modifiez-la puis enregistrez. Elle peut aussi être ajustée depuis la configuration de l'intégration Duo (Paramètres → Appareils et services → Duo → Configurer).</div>
           <div class="row">
-            <input type="text" id="accessories" placeholder="bandeau, plume, huile de massage, ..." />
+            <input type="text" id="accessories" placeholder="bandeau, plume, huile de massage, ..."
+              value="${esc((this._eveningData().accessories || []).join(", "))}" />
             <button id="saveAccessories">Enregistrer</button>
           </div>
         </details>
@@ -645,7 +648,7 @@ class DuoCard extends HTMLElement {
         ${
           history && history.attributes.last_entries && history.attributes.last_entries.length
             ? `
-          <details class="section">
+          <details class="section" id="historyDetails" ${this._detailsOpen.history ? "open" : ""}>
             <summary>Historique récent</summary>
             ${history.attributes.last_entries
               .slice()
@@ -672,6 +675,19 @@ class DuoCard extends HTMLElement {
     const themePicker = root.getElementById("themePicker");
     if (themePicker) {
       themePicker.addEventListener("change", () => this._setThemeKey(themePicker.value));
+    }
+
+    const prefsDetails = root.getElementById("prefsDetails");
+    if (prefsDetails) {
+      prefsDetails.addEventListener("toggle", () => {
+        this._detailsOpen.prefs = prefsDetails.open;
+      });
+    }
+    const historyDetails = root.getElementById("historyDetails");
+    if (historyDetails) {
+      historyDetails.addEventListener("toggle", () => {
+        this._detailsOpen.history = historyDetails.open;
+      });
     }
 
     this._attachTonightEvents();

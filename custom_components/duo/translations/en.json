@@ -36,13 +36,14 @@
   "options": {
     "step": {
       "init": {
-        "title": "Personnes et notifications",
-        "description": "Associez chaque partenaire à une personne Home Assistant. Chacun ne pourra modifier que sa propre humeur, et les notifications partiront vers tous les appareils mobiles de l'autre.",
+        "title": "Personnes, notifications et accessoires",
+        "description": "Associez chaque partenaire à une personne Home Assistant. Chacun ne pourra modifier que sa propre humeur, et les notifications partiront vers tous les appareils mobiles de l'autre. Vous pouvez aussi ajuster ici la liste des accessoires du couple.",
         "data": {
           "person1": "Personne associée à {partner1}",
           "person2": "Personne associée à {partner2}",
           "notify1": "Services notify de {partner1} (facultatif, séparés par des virgules)",
-          "notify2": "Services notify de {partner2} (facultatif, séparés par des virgules)"
+          "notify2": "Services notify de {partner2} (facultatif, séparés par des virgules)",
+          "accessories": "Accessoires du couple (séparés par des virgules)"
         }
       }
     },
