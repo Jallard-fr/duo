@@ -79,6 +79,16 @@ mood_entity_partner2: select.duo_mood_bob
 
 Adaptez les `entity_id` aux noms réellement générés par votre installation (visibles dans **Outils de développement → États**, filtrez sur `duo`).
 
+### Thème de la carte
+
+Un sélecteur en haut de la carte permet à chaque personne qui consulte le tableau de bord de choisir son propre thème visuel (Home Assistant, Romantique, Nuit, Élégant, Doux) : le choix est mémorisé dans le navigateur, indépendamment du thème global du tableau de bord. Un thème par défaut peut aussi être fixé via le champ `theme` de la configuration de la carte (éditeur visuel ou YAML), par ex. `theme: sombre`.
+
+### La carte ne s'affiche pas ("Custom element doesn't exist: duo-card")
+
+1. Vérifiez dans **Paramètres → Système → Journal** (filtrez sur `duo`) la présence de la ligne `Duo : carte servie sur /duo_frontend/duo-card.js?v=...` après un redémarrage complet. Son absence indique un problème d'enregistrement côté intégration (voir les journaux pour la cause exacte).
+2. Si la ligne est présente mais la carte ne s'affiche toujours pas, fermez complètement l'onglet/l'application (pas seulement un rechargement) et rouvrez le tableau de bord, ou videz les données du site pour l'URL de votre Home Assistant : certains onglets déjà ouverts ou installations en PWA ne relisent la liste des scripts qu'à une navigation complète, pas à une simple reconnexion.
+3. Vérifiez que l'URL `/duo_frontend/duo-card.js?v=<version>` (le numéro de version doit correspondre à celui du journal) répond bien avec du code JavaScript et non une erreur.
+
 ## Services disponibles
 
 | Service | Description |

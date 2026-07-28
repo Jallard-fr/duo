@@ -43,7 +43,7 @@ PLATFORMS = ["sensor", "select"]
 # aucune ressource Lovelace à ajouter manuellement.
 URL_BASE = "/duo_frontend"
 CARD_FILE = "duo-card.js"
-CARD_VERSION = "0.4.0"  # à incrémenter à chaque modification du JS
+CARD_VERSION = "0.5.0"  # à incrémenter à chaque modification du JS
 FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
 
 SET_PREFERENCE_SCHEMA = vol.Schema(
@@ -129,7 +129,7 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
         ]
     )
     add_extra_js_url(hass, CARD_URL)
-    _LOGGER.debug("Duo : carte servie sur %s", CARD_URL)
+    _LOGGER.info("Duo : carte servie sur %s", CARD_URL)
 
 
 async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:

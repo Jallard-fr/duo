@@ -25,6 +25,66 @@ const MOOD_NOVELTY = "nouveaute";
 const NEW_IDEA_UNKNOWN = "__unknown__";
 const MAX_INTENSITY = 4;
 
+// Thèmes visuels de la carte : surchargent localement (dans le shadow DOM
+// de la carte uniquement) les variables CSS utilisées par son style. Le
+// thème "auto" ne surcharge rien et suit donc le thème Home Assistant actif.
+const THEME_OPTIONS = [
+  ["auto", "Thème Home Assistant"],
+  ["rose", "Romantique"],
+  ["sombre", "Nuit"],
+  ["elegant", "Élégant"],
+  ["doux", "Doux (pastel)"],
+];
+
+const THEME_PRESETS = {
+  auto: null,
+  rose: {
+    "--primary-color": "#e91e63",
+    "--card-background-color": "#fff5f8",
+    "--ha-card-background": "#fff5f8",
+    "--secondary-background-color": "#ffe4ec",
+    "--divider-color": "#f3c4d3",
+    "--primary-text-color": "#3a1f2b",
+    "--secondary-text-color": "#7a4a5c",
+  },
+  sombre: {
+    "--primary-color": "#ff4d79",
+    "--card-background-color": "#171318",
+    "--ha-card-background": "#171318",
+    "--secondary-background-color": "#241f27",
+    "--divider-color": "#3a333e",
+    "--primary-text-color": "#f5f0f2",
+    "--secondary-text-color": "#c9bcc3",
+  },
+  elegant: {
+    "--primary-color": "#c9a24b",
+    "--card-background-color": "#14120f",
+    "--ha-card-background": "#14120f",
+    "--secondary-background-color": "#1e1a14",
+    "--divider-color": "#3a321f",
+    "--primary-text-color": "#ece2c8",
+    "--secondary-text-color": "#c2b791",
+  },
+  doux: {
+    "--primary-color": "#8e7cc3",
+    "--card-background-color": "#f7f5ff",
+    "--ha-card-background": "#f7f5ff",
+    "--secondary-background-color": "#ece7fb",
+    "--divider-color": "#dcd3f4",
+    "--primary-text-color": "#332d4b",
+    "--secondary-text-color": "#655c8a",
+  },
+};
+
+function themeCss(themeKey) {
+  const preset = THEME_PRESETS[themeKey];
+  if (!preset) return "";
+  const vars = Object.entries(preset)
+    .map(([k, v]) => `${k}: ${v};`)
+    .join(" ");
+  return `:host { ${vars} }`;
+}
+
 function moodInfo(key) {
   return MOODS.find(([k]) => k === key) || MOODS[0];
 }
@@ -121,6 +181,35 @@ class DuoCard extends HTMLElement {
 
   _missingFields() {
     return REQUIRED_FIELDS.filter(([key]) => !this._config[key]);
+  }
+
+  // --- Thème -----------------------------------------------------------
+  // Chaque personne qui consulte le tableau de bord peut choisir son propre
+  // thème pour cette carte, sans toucher à la configuration YAML : le choix
+  // est mémorisé dans le navigateur (par carte, via son entry_id).
+  _themeStorageKey() {
+    return `duo-card-theme-${this._config.entry_id || "default"}`;
+  }
+
+  _themeKey() {
+    try {
+      const stored = window.localStorage.getItem(this._themeStorageKey());
+      if (stored && THEME_PRESETS.hasOwnProperty(stored)) return stored;
+    } catch (err) {
+      // Stockage indisponible (navigation privée, etc.) : on ignore.
+    }
+    return this._config.theme && THEME_PRESETS.hasOwnProperty(this._config.theme)
+      ? this._config.theme
+      : "auto";
+  }
+
+  _setThemeKey(themeKey) {
+    try {
+      window.localStorage.setItem(this._themeStorageKey(), themeKey);
+    } catch (err) {
+      // Stockage indisponible : le choix ne survivra pas au rechargement.
+    }
+    this._render();
   }
 
   set hass(hass) {
@@ -400,12 +489,16 @@ class DuoCard extends HTMLElement {
     const remaining = timer ? Number(timer.state) : 0;
     const total = timer ? timer.attributes.total_seconds || 1 : 1;
     const progressPct = Math.round((1 - remaining / Math.max(total, 1)) * 100);
+    const themeKey = this._themeKey();
 
     this._root.innerHTML = `
       <style>
         :host { display: block; }
+        ${themeCss(themeKey)}
         ha-card { padding: 16px; font-family: var(--paper-font-body1_-_font-family, inherit); }
-        .title { font-size: 1.2em; font-weight: 600; margin-bottom: 12px; }
+        .title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+        .title { font-size: 1.2em; font-weight: 600; }
+        .theme-picker { font-size: 0.75em; padding: 2px; border-radius: 6px; border: 1px solid var(--divider-color, #ccc); background: transparent; color: var(--primary-text-color, inherit); }
         .section { margin-bottom: 20px; }
         .section h3 { margin: 0 0 8px 0; font-size: 1em; opacity: 0.8; }
         .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 8px; }
@@ -464,7 +557,15 @@ class DuoCard extends HTMLElement {
         .note { font-size: 0.85em; opacity: 0.7; }
       </style>
       <ha-card>
-        <div class="title">💞 Duo — ${cfg.partner1} &amp; ${cfg.partner2}</div>
+        <div class="title-row">
+          <div class="title">💞 Duo — ${cfg.partner1} &amp; ${cfg.partner2}</div>
+          <select class="theme-picker" id="themePicker" title="Thème de la carte">
+            ${THEME_OPTIONS.map(
+              ([k, l]) =>
+                `<option value="${k}" ${k === themeKey ? "selected" : ""}>${esc(l)}</option>`
+            ).join("")}
+          </select>
+        </div>
 
         ${this._renderTonight()}
 
@@ -568,6 +669,11 @@ class DuoCard extends HTMLElement {
     const root = this._root;
     const cfg = this._config;
 
+    const themePicker = root.getElementById("themePicker");
+    if (themePicker) {
+      themePicker.addEventListener("change", () => this._setThemeKey(themePicker.value));
+    }
+
     this._attachTonightEvents();
 
     const requestBtn = root.getElementById("request");
@@ -630,6 +736,7 @@ const EDITOR_LABELS = {
   history_entity: "Entité historique (facultatif)",
   mood_entity_partner1: "Humeur du partenaire 1 (facultatif)",
   mood_entity_partner2: "Humeur du partenaire 2 (facultatif)",
+  theme: "Thème par défaut de la carte (facultatif)",
 };
 
 class DuoCardEditor extends HTMLElement {
@@ -690,6 +797,15 @@ class DuoCardEditor extends HTMLElement {
       { name: "history_entity", selector: sensor },
       { name: "mood_entity_partner1", selector: select },
       { name: "mood_entity_partner2", selector: select },
+      {
+        name: "theme",
+        selector: {
+          select: {
+            options: THEME_OPTIONS.map(([value, label]) => ({ value, label })),
+            mode: "dropdown",
+          },
+        },
+      },
     ];
   }
 
