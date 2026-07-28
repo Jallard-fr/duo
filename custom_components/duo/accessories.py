@@ -83,8 +83,8 @@ ACCESSORY_CATALOG = [
     _item("lingerie_fine", "Lingerie fine", ACCESSORY_CATEGORY_LINGERIE, actor_sex=SEX_FEMME),
     # Déguisement et masque restent génériques (aucun des deux n'est
     # spécifique à un sexe en particulier).
-    _item("tenue_legere", "Déguisement sexy", ACCESSORY_CATEGORY_LINGERIE),
-    _item("masque", "Masque sexy", ACCESSORY_CATEGORY_LINGERIE),
+    _item("tenue_legere", "Déguisement sexy femme", ACCESSORY_CATEGORY_LINGERIE, actor_sex=SEX_FEMME),
+    _item("masque", "Masque sexy femme", ACCESSORY_CATEGORY_LINGERIE, actor_sex=SEX_FEMME),
 
     _item("lubrifiant", "Lubrifiant", ACCESSORY_CATEGORY_SOINS),
     _item("gel_chauffant", "Gel chauffant / rafraîchissant", ACCESSORY_CATEGORY_SOINS),
