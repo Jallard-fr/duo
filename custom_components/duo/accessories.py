@@ -40,6 +40,8 @@ ACCESSORY_CATALOG = [
     {"id": "jeu_societe_coquin", "label": "Jeu de société coquin", "category": ACCESSORY_CATEGORY_JEUX},
 
     {"id": "vibromasseur", "label": "Vibromasseur", "category": ACCESSORY_CATEGORY_VIBRANT},
+    {"id": "RabbitD", "label": "Rabbit double", "category": ACCESSORY_CATEGORY_VIBRANT},
+    {"id": "Satisfyer", "label": "Satisfyer", "category": ACCESSORY_CATEGORY_VIBRANT},
     {"id": "bague_vibrante", "label": "Bague vibrante", "category": ACCESSORY_CATEGORY_VIBRANT},
     {"id": "mini_vibro", "label": "Mini-vibro discret", "category": ACCESSORY_CATEGORY_VIBRANT},
     {"id": "masseur_couple", "label": "Masseur pour couple", "category": ACCESSORY_CATEGORY_VIBRANT},
@@ -49,7 +51,9 @@ ACCESSORY_CATALOG = [
     {"id": "fouet_leger", "label": "Fouet léger / palette", "category": ACCESSORY_CATEGORY_CONTRAINTE_DOUCE},
 
     {"id": "lingerie_fine", "label": "Lingerie fine", "category": ACCESSORY_CATEGORY_LINGERIE},
-    {"id": "tenue_legere", "label": "Tenue / déguisement léger", "category": ACCESSORY_CATEGORY_LINGERIE},
+    {"id": "tenue_legere", "label": "Déguisement sexy", "category": ACCESSORY_CATEGORY_LINGERIE},
+    {"id": "masque", "label": "Masque sexy", "category": ACCESSORY_CATEGORY_LINGERIE},
+
 
     {"id": "lubrifiant", "label": "Lubrifiant", "category": ACCESSORY_CATEGORY_SOINS},
     {"id": "gel_chauffant", "label": "Gel chauffant / rafraîchissant", "category": ACCESSORY_CATEGORY_SOINS},
