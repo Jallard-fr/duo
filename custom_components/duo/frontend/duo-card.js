@@ -883,7 +883,8 @@ class DuoCard extends HTMLElement {
         .reminder { font-size: 0.8em; opacity: 0.6; font-style: italic; margin-top: 6px; }
         .history-item { font-size: 0.85em; opacity: 0.8; padding: 2px 0; }
         details summary { cursor: pointer; opacity: 0.8; margin-bottom: 8px; }
-        .pref-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .pref-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .pref-value { min-width: 1.2em; text-align: center; font-weight: 600; opacity: 0.8; }
         .moods { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
         .mood-btn {
           flex: 1 1 auto; min-width: 84px; display: flex; flex-direction: column;
@@ -1006,17 +1007,23 @@ class DuoCard extends HTMLElement {
           ${this._quiz.open ? this._renderQuiz() : this._renderQuizLauncher()}
           ${(() => {
             const data = this._eveningData();
-            const renderSliders = (partnerNum, partnerName) => `
+            const renderSliders = (partnerNum, partnerName) => {
+              const prefs = (data.states[partnerName] || {}).preferences || {};
+              return `
               <h3>Préférences de ${esc(partnerName)}</h3>
-              ${CATEGORIES.map(
-                ([k, l]) => `
+              ${CATEGORIES.map(([k, l]) => {
+                const rating = prefs[k] === undefined ? 3 : prefs[k];
+                return `
                 <div class="pref-row">
                   <label>${esc(l)}</label>
-                  <input type="range" min="0" max="5" step="1" data-partner="${partnerNum}" data-category="${k}" class="pref-slider" />
+                  <input type="range" min="0" max="5" step="1" value="${rating}"
+                    data-partner="${partnerNum}" data-category="${k}" class="pref-slider" />
+                  <span class="pref-value">${rating}</span>
                 </div>
-              `
-              ).join("")}
+              `;
+              }).join("")}
             `;
+            };
             // Identité connue (personne HA associée) : chacun ne voit et ne
             // modifie que ses propres curseurs. Sans association (appareil
             // partagé), on affiche les deux comme avant.
@@ -1218,6 +1225,12 @@ class DuoCard extends HTMLElement {
     });
 
     root.querySelectorAll(".pref-slider").forEach((slider) => {
+      const valueLabel = slider.nextElementSibling;
+      slider.addEventListener("input", () => {
+        if (valueLabel && valueLabel.classList.contains("pref-value")) {
+          valueLabel.textContent = slider.value;
+        }
+      });
       slider.addEventListener("change", () => {
         const partnerName = slider.dataset.partner === "1" ? cfg.partner1 : cfg.partner2;
         this._duoService("set_preference", {

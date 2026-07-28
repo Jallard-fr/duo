@@ -47,7 +47,7 @@ PLATFORMS = ["sensor", "select"]
 # aucune ressource Lovelace à ajouter manuellement.
 URL_BASE = "/duo_frontend"
 CARD_FILE = "duo-card.js"
-CARD_VERSION = "0.14.0"  # à incrémenter à chaque modification du JS
+CARD_VERSION = "0.14.1"  # à incrémenter à chaque modification du JS
 FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
 
 SET_PREFERENCE_SCHEMA = vol.Schema(

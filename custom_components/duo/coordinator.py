@@ -300,6 +300,9 @@ class DuoCoordinator:
             "brave_taboos": self.brave_taboos(partner),
             "phase_progress": self.phase_progress.get(partner, 0),
             "phase_target": LEVEL_TARGET_COUNT,
+            # Notes de préférence par catégorie (0-5). Une catégorie absente
+            # équivaut à la note neutre par défaut (3), comme dans _rating_for.
+            "preferences": dict(self.profile.get("preferences", {}).get(partner, {})),
         }
 
     def _build_notification(self, partner: str, mood: str, evening: dict) -> tuple[str, str]:
