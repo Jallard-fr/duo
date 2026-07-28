@@ -22,6 +22,7 @@ from .const import (
     DOMAIN,
     MOOD_OPTIONS,
     PHASES,
+    PRACTICE_ANSWERS,
     SERVICE_CLEAR_PROFILE,
     SERVICE_REQUEST_SUGGESTION,
     SERVICE_RESET_SESSION,
@@ -29,6 +30,7 @@ from .const import (
     SERVICE_SET_ACCESSORIES,
     SERVICE_SET_BRAVE_TABOOS,
     SERVICE_SET_MOOD,
+    SERVICE_SET_PRACTICE_LIMIT,
     SERVICE_SET_PREFERENCE,
     SERVICE_START_TIMER,
     SERVICE_STOP_TIMER,
@@ -45,7 +47,7 @@ PLATFORMS = ["sensor", "select"]
 # aucune ressource Lovelace à ajouter manuellement.
 URL_BASE = "/duo_frontend"
 CARD_FILE = "duo-card.js"
-CARD_VERSION = "0.13.0"  # à incrémenter à chaque modification du JS
+CARD_VERSION = "0.14.0"  # à incrémenter à chaque modification du JS
 FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
 
 SET_PREFERENCE_SCHEMA = vol.Schema(
@@ -69,6 +71,15 @@ SET_BRAVE_TABOOS_SCHEMA = vol.Schema(
         vol.Required("entry_id"): cv.string,
         vol.Required("partner"): cv.string,
         vol.Required("enabled"): cv.boolean,
+    }
+)
+
+SET_PRACTICE_LIMIT_SCHEMA = vol.Schema(
+    {
+        vol.Required("entry_id"): cv.string,
+        vol.Required("partner"): cv.string,
+        vol.Required("key"): cv.string,
+        vol.Required("answer"): vol.In(PRACTICE_ANSWERS),
     }
 )
 
@@ -278,8 +289,20 @@ def _async_register_services(hass: HomeAssistant) -> None:
 
     async def handle_set_preference(call: ServiceCall) -> None:
         coordinator = _get_coordinator(hass, call.data["entry_id"])
+        coordinator.check_partner_permission(
+            call.data["partner"], call.context.user_id, what="ses préférences"
+        )
         await coordinator.async_set_preference(
             call.data["partner"], call.data["category"], call.data["rating"]
+        )
+
+    async def handle_set_practice_limit(call: ServiceCall) -> None:
+        coordinator = _get_coordinator(hass, call.data["entry_id"])
+        coordinator.check_partner_permission(
+            call.data["partner"], call.context.user_id, what="ses limites"
+        )
+        await coordinator.async_set_practice_limit(
+            call.data["partner"], call.data["key"], call.data["answer"]
         )
 
     async def handle_set_accessories(call: ServiceCall) -> None:
@@ -288,6 +311,9 @@ def _async_register_services(hass: HomeAssistant) -> None:
 
     async def handle_set_brave_taboos(call: ServiceCall) -> None:
         coordinator = _get_coordinator(hass, call.data["entry_id"])
+        coordinator.check_partner_permission(
+            call.data["partner"], call.context.user_id, what="ce réglage"
+        )
         await coordinator.async_set_brave_taboos(call.data["partner"], call.data["enabled"])
 
     async def handle_set_mood(call: ServiceCall) -> None:
@@ -340,6 +366,12 @@ def _async_register_services(hass: HomeAssistant) -> None:
 
     hass.services.async_register(
         DOMAIN, SERVICE_SET_PREFERENCE, handle_set_preference, schema=SET_PREFERENCE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_PRACTICE_LIMIT,
+        handle_set_practice_limit,
+        schema=SET_PRACTICE_LIMIT_SCHEMA,
     )
     hass.services.async_register(
         DOMAIN, SERVICE_SET_ACCESSORIES, handle_set_accessories, schema=SET_ACCESSORIES_SCHEMA

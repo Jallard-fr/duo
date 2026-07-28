@@ -34,6 +34,86 @@ const QUIZ_CHOICES = [
   ["5", "Toujours", 5],
 ];
 
+// Questionnaire de limites : questions fermées et explicites, groupées par
+// pratique (voir PRACTICE_* dans const.py). "donne"/"recoit" distingue le
+// rôle actif du rôle passif ; "usage" (jouets) est symétrique. Le libellé
+// de la stimulation orale s'adapte au sexe concerné (fellation/cunnilingus)
+// quand il est connu, sinon reste générique.
+function oralLabel(sex) {
+  if (sex === "Homme") return "une fellation";
+  if (sex === "Femme") return "un cunnilingus";
+  return "une stimulation orale";
+}
+
+const PRACTICE_GROUPS = [
+  {
+    key: "oral",
+    label: "Stimulation orale",
+    questions: [
+      {
+        role: "donne",
+        text: (mySex, otherSex) => `Acceptes-tu de faire ${oralLabel(otherSex)} à ton/ta partenaire ?`,
+      },
+      {
+        role: "recoit",
+        text: (mySex) => `Acceptes-tu que ton/ta partenaire te fasse ${oralLabel(mySex)} ?`,
+      },
+    ],
+  },
+  {
+    key: "anal",
+    label: "Pénétration anale (sodomie)",
+    questions: [
+      { role: "donne", text: () => "Acceptes-tu de pratiquer une pénétration anale sur ton/ta partenaire ?" },
+      { role: "recoit", text: () => "Acceptes-tu de recevoir une pénétration anale ?" },
+    ],
+  },
+  {
+    key: "discipline",
+    label: "Discipline légère (fessée, fouet léger)",
+    questions: [
+      { role: "donne", text: () => "Acceptes-tu d'appliquer une discipline légère à ton/ta partenaire ?" },
+      { role: "recoit", text: () => "Acceptes-tu de la recevoir ?" },
+    ],
+  },
+  {
+    key: "liens",
+    label: "Contrainte douce / liens",
+    questions: [
+      { role: "donne", text: () => "Acceptes-tu d'attacher ton/ta partenaire avec des liens doux ?" },
+      { role: "recoit", text: () => "Acceptes-tu d'être attaché(e) ?" },
+    ],
+  },
+  {
+    key: "jouets",
+    label: "Jouets vibrants",
+    questions: [
+      { role: "usage", text: () => "Acceptes-tu l'utilisation de jouets/accessoires vibrants à deux ?" },
+    ],
+  },
+];
+
+const PRACTICE_ANSWER_CHOICES = [
+  ["oui", "Oui"],
+  ["a_voir", "À voir"],
+  ["non", "Non"],
+];
+
+function flattenPracticeSteps() {
+  const steps = [];
+  PRACTICE_GROUPS.forEach((group) => {
+    group.questions.forEach((question) => {
+      steps.push({
+        groupKey: group.key,
+        groupLabel: group.label,
+        role: question.role,
+        text: question.text,
+      });
+    });
+  });
+  return steps;
+}
+
 // Catalogue d'accessoires : lu dynamiquement depuis les attributs de
 // l'entité "soirée" (accessory_catalog / accessory_categories), exposés par
 // l'intégration à partir de custom_components/duo/accessories.py, qui reste
@@ -231,7 +311,7 @@ class DuoCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
     this._detailsOpen = this._detailsOpen || {};
-    this._quiz = this._quiz || { open: false, stepIndex: 0, answers: {} };
+    this._quiz = this._quiz || { open: false, kind: null, stepIndex: -1, partner: null, answers: {} };
     if (!this._root) {
       this._root = this.attachShadow({ mode: "open" });
     }
@@ -432,36 +512,97 @@ class DuoCard extends HTMLElement {
     `;
   }
 
-  // --- Questionnaire de préférences (choix fermés) ------------------------
+  // --- Questionnaires (choix fermés) ---------------------------------------
+  // Chaque questionnaire est verrouillé à une seule personne à la fois : si
+  // l'identité du partenaire connecté n'est pas connue (pas de personne HA
+  // associée), un écran demande explicitement "qui répond ?" avant la
+  // première question, plutôt que de supposer silencieusement qui que ce
+  // soit — personne ne doit répondre par erreur au questionnaire de l'autre.
 
-  _quizPartner() {
-    const data = this._eveningData();
-    return data.me || this._config.partner1;
+  _partnerSexes() {
+    const cfg = this._config;
+    const entity = cfg.evening_entity ? this._hass.states[cfg.evening_entity] : null;
+    return (entity && entity.attributes && entity.attributes.partner_sex) || {};
   }
 
   _renderQuizLauncher() {
     return `
       <div class="row">
-        <div class="note">Réponds à quelques questions fermées pour affiner ce qui t'est proposé (rejouable à tout moment).</div>
-        <button class="secondary" id="startQuiz">Questionnaire guidé</button>
+        <div class="note">Réponds à quelques questions fermées pour affiner ce qui t'est proposé (rejouable à tout moment). Chacun ne voit et ne répond qu'à son propre questionnaire.</div>
+      </div>
+      <div class="actions">
+        <button class="secondary" id="startCategoryQuiz">Questionnaire de préférences</button>
+        <button class="secondary" id="startPracticeQuiz">Questionnaire de limites</button>
       </div>
     `;
   }
 
   _renderQuiz() {
     const quiz = this._quiz;
+    if (quiz.stepIndex < 0) return this._renderQuizPartnerPicker();
+    if (quiz.kind === "practice") return this._renderPracticeQuizStep();
+    return this._renderCategoryQuizStep();
+  }
+
+  _renderQuizPartnerPicker() {
+    const cfg = this._config;
+    return `
+      <div class="draft">
+        <h4>Qui répond à ce questionnaire ?</h4>
+        <div class="note">Les réponses ne concernent que la personne qui répond. Passe l'appareil à cette personne, ou détourne le regard si vous êtes côte à côte.</div>
+        <div class="actions">
+          <button data-quiz-partner="${esc(cfg.partner1)}">${esc(cfg.partner1)}</button>
+          <button data-quiz-partner="${esc(cfg.partner2)}">${esc(cfg.partner2)}</button>
+        </div>
+        <div class="actions">
+          <button class="secondary" id="cancelQuiz">Annuler</button>
+        </div>
+      </div>
+    `;
+  }
+
+  _renderCategoryQuizStep() {
+    const quiz = this._quiz;
     const [key, label] = CATEGORIES[quiz.stepIndex] || [];
     if (!key) return "";
-    const partner = this._quizPartner();
 
     return `
       <div class="draft">
-        <h4>Questionnaire de ${esc(partner)} — ${quiz.stepIndex + 1}/${CATEGORIES.length}</h4>
+        <h4>Préférences de ${esc(quiz.partner)} — ${quiz.stepIndex + 1}/${CATEGORIES.length}</h4>
         <div class="note">${esc(label)} : à quelle fréquence aimerais-tu que ce thème te soit proposé ?</div>
         <div class="chips">
           ${QUIZ_CHOICES.map(
             ([value, choiceLabel]) =>
               `<button class="chip quiz-choice" data-quiz-value="${value}">${esc(choiceLabel)}</button>`
+          ).join("")}
+        </div>
+        <div class="actions">
+          <button class="secondary" id="cancelQuiz">Annuler</button>
+        </div>
+      </div>
+    `;
+  }
+
+  _renderPracticeQuizStep() {
+    const quiz = this._quiz;
+    const steps = flattenPracticeSteps();
+    const step = steps[quiz.stepIndex];
+    if (!step) return "";
+
+    const cfg = this._config;
+    const sexes = this._partnerSexes();
+    const otherPartner = quiz.partner === cfg.partner1 ? cfg.partner2 : cfg.partner1;
+    const questionText = step.text(sexes[quiz.partner], sexes[otherPartner]);
+
+    return `
+      <div class="draft">
+        <h4>Limites de ${esc(quiz.partner)} — ${quiz.stepIndex + 1}/${steps.length}</h4>
+        <div class="note"><strong>${esc(step.groupLabel)}</strong></div>
+        <div class="note">${esc(questionText)}</div>
+        <div class="chips">
+          ${PRACTICE_ANSWER_CHOICES.map(
+            ([value, choiceLabel]) =>
+              `<button class="chip practice-choice" data-practice-value="${value}">${esc(choiceLabel)}</button>`
           ).join("")}
         </div>
         <div class="actions">
@@ -863,24 +1004,26 @@ class DuoCard extends HTMLElement {
         <details class="section" id="prefsDetails" ${this._detailsOpen.prefs ? "open" : ""}>
           <summary>Préférences &amp; accessoires</summary>
           ${this._quiz.open ? this._renderQuiz() : this._renderQuizLauncher()}
-          <h3>Préférences de ${cfg.partner1}</h3>
-          ${CATEGORIES.map(
-            ([k, l]) => `
-            <div class="pref-row">
-              <label>${l}</label>
-              <input type="range" min="0" max="5" step="1" data-partner="1" data-category="${k}" class="pref-slider" />
-            </div>
-          `
-          ).join("")}
-          <h3>Préférences de ${cfg.partner2}</h3>
-          ${CATEGORIES.map(
-            ([k, l]) => `
-            <div class="pref-row">
-              <label>${l}</label>
-              <input type="range" min="0" max="5" step="1" data-partner="2" data-category="${k}" class="pref-slider" />
-            </div>
-          `
-          ).join("")}
+          ${(() => {
+            const data = this._eveningData();
+            const renderSliders = (partnerNum, partnerName) => `
+              <h3>Préférences de ${esc(partnerName)}</h3>
+              ${CATEGORIES.map(
+                ([k, l]) => `
+                <div class="pref-row">
+                  <label>${esc(l)}</label>
+                  <input type="range" min="0" max="5" step="1" data-partner="${partnerNum}" data-category="${k}" class="pref-slider" />
+                </div>
+              `
+              ).join("")}
+            `;
+            // Identité connue (personne HA associée) : chacun ne voit et ne
+            // modifie que ses propres curseurs. Sans association (appareil
+            // partagé), on affiche les deux comme avant.
+            if (data.me === cfg.partner1) return renderSliders(1, cfg.partner1);
+            if (data.me === cfg.partner2) return renderSliders(2, cfg.partner2);
+            return renderSliders(1, cfg.partner1) + renderSliders(2, cfg.partner2);
+          })()}
           <h3>Accessoires possédés par le couple</h3>
           <div class="note">Cochez ce que vous possédez déjà. Modifiable aussi depuis la configuration de l'intégration Duo (Paramètres → Appareils et services → Duo → Configurer).</div>
           ${(() => {
@@ -946,33 +1089,73 @@ class DuoCard extends HTMLElement {
       });
     }
 
-    const startQuizBtn = root.getElementById("startQuiz");
-    if (startQuizBtn) {
-      startQuizBtn.addEventListener("click", () => {
-        this._quiz = { open: true, stepIndex: 0, answers: {} };
-        this._detailsOpen.prefs = true;
-        this._render();
-      });
+    const closedQuiz = () => ({ open: false, kind: null, stepIndex: -1, partner: null, answers: {} });
+
+    const startQuiz = (kind) => {
+      const data = this._eveningData();
+      const partner = data.me || null;
+      this._quiz = { open: true, kind, stepIndex: partner ? 0 : -1, partner, answers: {} };
+      this._detailsOpen.prefs = true;
+      this._render();
+    };
+
+    const startCategoryQuizBtn = root.getElementById("startCategoryQuiz");
+    if (startCategoryQuizBtn) {
+      startCategoryQuizBtn.addEventListener("click", () => startQuiz("category"));
     }
+    const startPracticeQuizBtn = root.getElementById("startPracticeQuiz");
+    if (startPracticeQuizBtn) {
+      startPracticeQuizBtn.addEventListener("click", () => startQuiz("practice"));
+    }
+
     const cancelQuizBtn = root.getElementById("cancelQuiz");
     if (cancelQuizBtn) {
       cancelQuizBtn.addEventListener("click", () => {
-        this._quiz = { open: false, stepIndex: 0, answers: {} };
+        this._quiz = closedQuiz();
         this._render();
       });
     }
+
+    root.querySelectorAll("[data-quiz-partner]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        this._quiz.partner = btn.dataset.quizPartner;
+        this._quiz.stepIndex = 0;
+        this._render();
+      });
+    });
+
     root.querySelectorAll(".quiz-choice").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const [key] = CATEGORIES[this._quiz.stepIndex] || [];
+        const quiz = this._quiz;
+        const [key] = CATEGORIES[quiz.stepIndex] || [];
         if (!key) return;
-        this._quiz.answers[key] = Number(btn.dataset.quizValue);
-        this._quiz.stepIndex += 1;
-        if (this._quiz.stepIndex >= CATEGORIES.length) {
-          const partner = this._quizPartner();
-          Object.entries(this._quiz.answers).forEach(([category, rating]) => {
+        quiz.answers[key] = Number(btn.dataset.quizValue);
+        quiz.stepIndex += 1;
+        if (quiz.stepIndex >= CATEGORIES.length) {
+          const partner = quiz.partner;
+          Object.entries(quiz.answers).forEach(([category, rating]) => {
             this._duoService("set_preference", { partner, category, rating });
           });
-          this._quiz = { open: false, stepIndex: 0, answers: {} };
+          this._quiz = closedQuiz();
+        }
+        this._render();
+      });
+    });
+
+    root.querySelectorAll(".practice-choice").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const quiz = this._quiz;
+        const steps = flattenPracticeSteps();
+        const step = steps[quiz.stepIndex];
+        if (!step) return;
+        quiz.answers[`${step.groupKey}_${step.role}`] = btn.dataset.practiceValue;
+        quiz.stepIndex += 1;
+        if (quiz.stepIndex >= steps.length) {
+          const partner = quiz.partner;
+          Object.entries(quiz.answers).forEach(([key, answer]) => {
+            this._duoService("set_practice_limit", { partner, key, answer });
+          });
+          this._quiz = closedQuiz();
         }
         this._render();
       });

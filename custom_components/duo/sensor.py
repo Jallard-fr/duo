@@ -215,6 +215,13 @@ class DuoEveningSensor(DuoEntityBase):
             "accessory_categories": accessory_categories_as_list(),
             "mapping_configured": self.coordinator.mapping_configured,
             "entry_id": self.entry.entry_id,
+            # Sexe de chaque partenaire, pour que la carte adapte le libellé
+            # de ses questions (ex. fellation/cunnilingus selon le sexe
+            # concerné) sans dupliquer cette donnée côté frontend.
+            "partner_sex": {
+                partner: SEX_LABELS.get(self.coordinator.sex_of(partner))
+                for partner in partners
+            },
             # Progression guidée par niveau (= phase).
             "session_phase": self.coordinator.session_phase,
             "session_phase_label": PHASE_LABELS.get(

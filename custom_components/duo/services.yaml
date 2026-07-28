@@ -1,6 +1,10 @@
 set_preference:
   name: Définir une préférence
-  description: Enregistre le niveau d'intérêt (0 à 5) d'un partenaire pour une catégorie d'activités.
+  description: >-
+    Enregistre le niveau d'intérêt (0 à 5) d'un partenaire pour une
+    catégorie d'activités. Si une personne Home Assistant est associée à
+    chaque partenaire, seul le partenaire concerné peut modifier sa propre
+    note.
   fields:
     entry_id:
       name: Intégration
@@ -89,6 +93,49 @@ set_brave_taboos:
       required: true
       selector:
         boolean:
+
+set_practice_limit:
+  name: Définir une limite de pratique
+  description: >-
+    Enregistre la réponse d'un partenaire à une question fermée du
+    questionnaire de limites (voir custom_components/duo/const.py,
+    PRACTICE_*). Chacun ne peut définir que ses propres limites.
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
+    partner:
+      name: Partenaire
+      description: Prénom du partenaire qui répond.
+      required: true
+      selector:
+        text:
+    key:
+      name: Clé
+      description: >-
+        Identifiant de la question, ex. oral_donne, oral_recoit,
+        anal_donne, anal_recoit, discipline_donne, discipline_recoit,
+        liens_donne, liens_recoit, jouets_usage.
+      required: true
+      selector:
+        text:
+    answer:
+      name: Réponse
+      description: oui, a_voir ou non. "non" exclut l'activité correspondante.
+      required: true
+      selector:
+        select:
+          options:
+            - value: oui
+              label: Oui
+            - value: a_voir
+              label: À voir
+            - value: non
+              label: Non
 
 set_mood:
   name: Définir l'humeur

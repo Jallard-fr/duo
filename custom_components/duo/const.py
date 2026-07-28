@@ -114,6 +114,43 @@ PHASE_DESCRIPTIONS = {
 }
 
 # ---------------------------------------------------------------------------
+# Limites par pratique : contrairement aux catégories (larges, ex.
+# "intensite_plus"), ces réponses ciblent des pratiques précises, sur le
+# modèle d'une liste de consentement "oui / à voir / non" utilisée en
+# thérapie de couple. "donne"/"recoit" distingue le rôle actif du rôle
+# passif ; "usage" (jouets) est symétrique. Une réponse "non" exclut
+# l'activité correspondante (voir practice_* dans activities.py), sauf si
+# le partenaire concerné a activé "braver ses interdits".
+# ---------------------------------------------------------------------------
+PRACTICE_ANSWER_OUI = "oui"
+PRACTICE_ANSWER_A_VOIR = "a_voir"
+PRACTICE_ANSWER_NON = "non"
+
+PRACTICE_ANSWERS = [PRACTICE_ANSWER_OUI, PRACTICE_ANSWER_A_VOIR, PRACTICE_ANSWER_NON]
+
+PRACTICE_ANSWER_LABELS = {
+    PRACTICE_ANSWER_OUI: "Oui",
+    PRACTICE_ANSWER_A_VOIR: "À voir",
+    PRACTICE_ANSWER_NON: "Non",
+}
+
+PRACTICE_ORAL = "oral"
+PRACTICE_ANAL = "anal"
+PRACTICE_DISCIPLINE = "discipline"
+PRACTICE_LIENS = "liens"
+PRACTICE_JOUETS = "jouets"
+
+PRACTICES = [PRACTICE_ORAL, PRACTICE_ANAL, PRACTICE_DISCIPLINE, PRACTICE_LIENS, PRACTICE_JOUETS]
+
+PRACTICE_LABELS = {
+    PRACTICE_ORAL: "Stimulation orale",
+    PRACTICE_ANAL: "Pénétration anale",
+    PRACTICE_DISCIPLINE: "Discipline légère (fessée, fouet léger)",
+    PRACTICE_LIENS: "Contrainte douce / liens",
+    PRACTICE_JOUETS: "Jouets vibrants",
+}
+
+# ---------------------------------------------------------------------------
 # Positions génériques, proposées comme simple élément de mise en scène pour
 # une activité (jamais associées à une description d'acte explicite).
 # ---------------------------------------------------------------------------
@@ -225,6 +262,7 @@ SERVICE_STOP_TIMER = "stop_timer"
 SERVICE_RESET_SESSION = "reset_session"
 SERVICE_CLEAR_PROFILE = "clear_profile"
 SERVICE_SET_BRAVE_TABOOS = "set_brave_taboos"
+SERVICE_SET_PRACTICE_LIMIT = "set_practice_limit"
 
 SIGNAL_UPDATE = "duo_update_{entry_id}"
 
@@ -243,6 +281,7 @@ DEFAULT_PROFILE = {
     # catégories qu'il a mises à 0 et aux activités en cooldown, jusqu'à ce
     # qu'il désactive à nouveau ce mode.
     "brave_taboos": {},  # {partner: bool}
+    "practice_limits": {},  # {partner: {"oral_donne": "oui"|"a_voir"|"non", ...}}
     # État de la soirée en cours, remis à zéro chaque nuit à minuit.
     # {partner: {"accessories": [...], "new_idea": str|None, "updated": iso}}
     "evening": {},

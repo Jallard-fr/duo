@@ -39,6 +39,9 @@ from .const import (
     NEW_IDEA_UNKNOWN_LABEL,
     PHASE_EXCITATION,
     PHASES,
+    PRACTICE_ANSWER_NON,
+    PRACTICE_ANSWER_OUI,
+    PRACTICE_JOUETS,
     SEX_INDIFFERENT,
     SIGNAL_UPDATE,
     STATUS_ACCEPTED,
@@ -132,12 +135,17 @@ class DuoCoordinator:
         """Vrai si au moins un partenaire est associé à une personne."""
         return any(self.person_entity_for(p) for p in self.partners)
 
-    def check_mood_permission(self, partner: str, user_id: str | None) -> None:
-        """Vérifie qu'un utilisateur a le droit de modifier cette humeur.
+    def check_partner_permission(
+        self, partner: str, user_id: str | None, *, what: str = "cette action"
+    ) -> None:
+        """Vérifie qu'un utilisateur a le droit d'agir au nom de `partner`.
 
         - user_id None : appel interne (automatisation, réinitialisation) → autorisé.
-        - Aucune association configurée → autorisé (compatibilité ascendante).
-        - Sinon, seul le propriétaire de l'humeur peut la modifier.
+        - Aucune association configurée → autorisé (compatibilité ascendante,
+          carte utilisée sans compte HA individuel par partenaire).
+        - Sinon, seul le propriétaire de l'entrée peut agir en son nom : ni
+          l'humeur, ni les préférences, ni les limites d'un partenaire ne
+          sont modifiables par l'autre.
         """
         if user_id is None or not self.mapping_configured:
             return
@@ -146,9 +154,12 @@ class DuoCoordinator:
             return
         if owner != user_id:
             raise HomeAssistantError(
-                f"Seul·e {partner} peut modifier son humeur. "
-                "Chacun gère uniquement la sienne."
+                f"Seul·e {partner} peut modifier {what}. "
+                "Chacun gère uniquement ce qui le concerne."
             )
+
+    def check_mood_permission(self, partner: str, user_id: str | None) -> None:
+        self.check_partner_permission(partner, user_id, what="son humeur")
 
     # ------------------------------------------------------------------
     # Notifications
@@ -190,6 +201,7 @@ class DuoCoordinator:
             self.profile.setdefault("moods", {}).setdefault(partner, MOOD_NOT_TONIGHT)
             self.profile.setdefault("evening", {}).setdefault(partner, {})
             self.profile.setdefault("brave_taboos", {}).setdefault(partner, False)
+            self.profile.setdefault("practice_limits", {}).setdefault(partner, {})
 
         # Remise à zéro automatique chaque nuit à minuit (heure locale).
         self._midnight_unsub = async_track_time_change(
@@ -221,6 +233,14 @@ class DuoCoordinator:
         qu'il a mises à 0 et aux activités en cooldown, jusqu'à ce qu'il le
         désactive à nouveau."""
         self.profile.setdefault("brave_taboos", {})[partner] = bool(enabled)
+        await self.async_save()
+        self._signal()
+
+    async def async_set_practice_limit(self, partner: str, key: str, answer: str) -> None:
+        """Enregistre la réponse d'un partenaire à une question de limite
+        (ex. key="oral_donne", answer="non") — voir practice_* dans
+        activities.py pour la façon dont ça filtre les suggestions."""
+        self.profile.setdefault("practice_limits", {}).setdefault(partner, {})[key] = answer
         await self.async_save()
         self._signal()
 
@@ -428,6 +448,32 @@ class DuoCoordinator:
         sauf s'il a débloqué ses interdits."""
         return self._rating_for(proposer, activity["category"]) > 0
 
+    def _practice_refused(self, partner: str, practice: str, role: str) -> bool:
+        answer = (
+            self.profile.get("practice_limits", {})
+            .get(partner, {})
+            .get(f"{practice}_{role}", PRACTICE_ANSWER_OUI)
+        )
+        return answer == PRACTICE_ANSWER_NON and not self.brave_taboos(partner)
+
+    def _matches_practice_limits(self, activity: dict, actor: str, receiver: str) -> bool:
+        """Un "non" au questionnaire de limites exclut l'activité
+        correspondante (voir practice_* dans activities.py), sauf pour le
+        partenaire qui a activé "braver ses interdits"."""
+        practice = activity.get("practice")
+        if not practice:
+            return True
+        if practice == PRACTICE_JOUETS:
+            # Pratique symétrique : un "non" de l'un ou l'autre suffit à exclure.
+            return not (
+                self._practice_refused(actor, practice, "usage")
+                or self._practice_refused(receiver, practice, "usage")
+            )
+        return not (
+            self._practice_refused(actor, practice, "donne")
+            or self._practice_refused(receiver, practice, "recoit")
+        )
+
     def _matches_phase(self, activity: dict, phase: str | None) -> bool:
         if not phase:
             return True
@@ -461,6 +507,7 @@ class DuoCoordinator:
                 self._matches_sex(activity, actor_sex, receiver_sex)
                 and self._matches_accessory(activity, actor_sex, receiver_sex)
                 and self._matches_preference(activity, proposer)
+                and self._matches_practice_limits(activity, turn, proposer)
                 and (self._matches_phase(activity, effective_phase) if with_phase else True)
             )
 
@@ -623,6 +670,7 @@ class DuoCoordinator:
             self.profile["moods"][partner] = MOOD_NOT_TONIGHT
             self.profile["evening"][partner] = {}
             self.profile["brave_taboos"][partner] = False
+            self.profile["practice_limits"][partner] = {}
         self.session_phase = PHASE_EXCITATION
         self.phase_progress = {}
         await self.async_save()

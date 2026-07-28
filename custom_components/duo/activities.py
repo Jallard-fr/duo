@@ -34,6 +34,16 @@ Each activity carries:
   capped at MAX_ACTIVITY_MINUTES so nothing drags on) or ``"count"``
   (count_min/count_max repetitions of count_unit, e.g. "10 baisers") —
   set through the ``_activity()`` builder below, never by hand.
+- ``practice``: optional PRACTICE_* tag (const.py) linking an activity to
+  one of the couple's closed-question consent limits (see the card's
+  "Questionnaire de limites"). The actor is considered to "donne" that
+  practice, the receiver to "recoit" it (except PRACTICE_JOUETS, which is
+  symmetric — "usage"). A "non" answer from either partner in the
+  relevant role excludes the activity, unless that partner has enabled
+  "braver ses interdits". Only a handful of entries carry a tag today
+  (the ones with a concrete, already-non-graphic match); PRACTICE_ANAL in
+  particular has no tagged entry yet since nothing in this catalog is
+  anal-specific — the couple's answer is still recorded for future use.
 """
 
 from .const import (
@@ -55,6 +65,10 @@ from .const import (
     POSITION_GENOUX,
     POSITION_PENCHE_AVANT,
     POSITION_QUATRE_PATTES,
+    PRACTICE_DISCIPLINE,
+    PRACTICE_JOUETS,
+    PRACTICE_LIENS,
+    PRACTICE_ORAL,
     SEX_HOMME,
     SEX_INDIFFERENT,
 )
@@ -80,6 +94,7 @@ def _activity(
     count: tuple[int, int, str] | None = None,
     accessory: dict | None = None,
     position: str | None = None,
+    practice: str | None = None,
     actor_sex: str = SEX_INDIFFERENT,
     receiver_sex: str = SEX_INDIFFERENT,
 ) -> dict:
@@ -121,6 +136,7 @@ def _activity(
         "intensity": intensity,
         "accessory": accessory,
         "position": position,
+        "practice": practice,
         "actor_sex": actor_sex,
         "receiver_sex": receiver_sex,
         **mode_fields,
@@ -289,6 +305,7 @@ ACTIVITIES = [
         "Attention particulière",
         "Explorez avec la bouche les zones que votre partenaire aime, à son rythme.",
         3, duration=(2, 3),
+        practice=PRACTICE_ORAL,
     ),
     _activity(
         "preliminaires_nuque_epaules", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
@@ -355,6 +372,7 @@ ACTIVITIES = [
         "Intégrez ensemble l'accessoire vibrant que vous possédez, au rythme et à l'intensité qui vous conviennent.",
         5, duration=(2, 3),
         accessory=_accessory_category("vibrant", required=False),
+        practice=PRACTICE_JOUETS,
     ),
     _activity(
         "intense_rythme_lent", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
@@ -374,6 +392,7 @@ ACTIVITIES = [
         "Ajoutez une touche de discipline légère avec l'accessoire choisi, à l'intensité validée ensemble avant de commencer.",
         4, duration=(1, 2),
         accessory=_accessory_id("fouet_leger", required=False),
+        practice=PRACTICE_DISCIPLINE,
     ),
     _activity(
         "intense_liens_du_soir", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
@@ -381,6 +400,7 @@ ACTIVITIES = [
         "Utilisez des liens doux pour immobiliser gentiment votre partenaire, avec un mot d'arrêt clair et respecté.",
         4, duration=(2, 3),
         accessory=_accessory_id("menottes_douces", required=False),
+        practice=PRACTICE_LIENS,
     ),
     _activity(
         "intense_gel_chauffant", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,

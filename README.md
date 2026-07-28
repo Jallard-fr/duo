@@ -9,8 +9,12 @@ Duo est une intégration [Home Assistant](https://www.home-assistant.io/) + une 
 - **Sexe de chaque partenaire** (homme/femme), renseigné à la configuration.
 - **Actions paramétrées par sexe acteur/récepteur** : chaque activité du catalogue porte un champ `actor_sex` (sexe du partenaire qui agit) et `receiver_sex` (sexe du partenaire qui reçoit), valant `homme`, `femme` ou `indifferent`. Seules les activités compatibles avec le sexe des deux partenaires pour le tour en cours sont proposées.
 - **Profil de préférences** par catégorie (préliminaires, sensoriel, massage, jeu de rôle, communication, intensité+, tendresse & après), noté de 0 à 5 par chaque partenaire. **0 = catégorie exclue** (plus jamais proposée), sauf si le partenaire active le mode "braver ses interdits" (voir plus bas).
-- **Questionnaire guidé** (dans la carte, section "Préférences & accessoires") : une question fermée par catégorie ("Jamais / Parfois / Souvent / Toujours") pour définir ces notes sans manier des curseurs. Rejouable à tout moment pour faire évoluer ses envies.
-- **Braver ses interdits** : un bouton personnel par partenaire qui, une fois activé, rend à nouveau proposables les catégories mises à 0 et les activités récemment déclinées, pour les prochaines suggestions — jusqu'à ce qu'il le désactive.
+- **Deux questionnaires fermés**, accessibles depuis la carte (section "Préférences & accessoires"), rejouables à tout moment :
+  - **Questionnaire de préférences** : une question par catégorie ("Jamais / Parfois / Souvent / Toujours").
+  - **Questionnaire de limites** : des questions explicites, groupées par pratique — stimulation orale, pénétration anale, discipline légère, contrainte douce/liens, jouets vibrants — chacune posée séparément pour le rôle actif ("acceptes-tu de faire...") et le rôle passif ("acceptes-tu de recevoir..."), avec 3 réponses possibles (Oui / À voir / Non). Un "non" exclut l'activité correspondante du catalogue pour ce rôle (ex. la sodomie peut être exclue par l'un des deux sans affecter l'autre). Le libellé s'adapte au sexe concerné (fellation/cunnilingus).
+  - **Chaque questionnaire est verrouillé à une seule personne** : si l'identité (via association à une personne Home Assistant) est connue, il démarre directement pour cette personne ; sinon un écran "qui répond ?" est affiché avant la première question, pour qu'on ne réponde jamais par erreur à la place de l'autre.
+- **Braver ses interdits** : un bouton personnel par partenaire qui, une fois activé, rend à nouveau proposables les catégories/pratiques qu'il a exclues et les activités récemment déclinées, pour les prochaines suggestions — jusqu'à ce qu'il le désactive.
+- **Permissions par partenaire** : si une personne Home Assistant est associée à chaque partenaire, préférences, limites et mode "braver ses interdits" ne sont modifiables que par la personne concernée — comme c'était déjà le cas pour l'humeur du soir.
 - **Humeur du soir** : chaque partenaire indique s'il/elle est partant(e), d'humeur douce, curieux(se), envie de nouveauté ou de torride, avec les accessoires qu'il/elle propose et une idée libre à tester. L'autre partenaire est notifié en push sur tous ses appareils mobiles.
 - **Association partenaire ↔ personne Home Assistant** (facultative) : chacun ne peut alors modifier que sa propre humeur, et Duo sait à qui envoyer la notification.
 - **Suggestions à tour de rôle**, pondérées selon les préférences, l'humeur, le sexe acteur/récepteur, la phase visée et les accessoires disponibles.
@@ -107,6 +111,7 @@ L'enregistrement de la carte est entièrement automatique : rien à ajouter à l
 | `duo.set_preference` | Enregistre la note (0-5) d'un partenaire pour une catégorie |
 | `duo.set_accessories` | Met à jour la liste des accessoires du couple |
 | `duo.set_brave_taboos` | Active/désactive, pour un partenaire, le fait de braver ses catégories exclues et ses activités récemment déclinées |
+| `duo.set_practice_limit` | Enregistre la réponse (oui/à voir/non) d'un partenaire à une question du questionnaire de limites |
 | `duo.set_mood` | Met à jour l'humeur du soir d'un partenaire (accessoires, idée libre) et notifie l'autre |
 | `duo.request_suggestion` | Propose une nouvelle activité (tour et phase optionnels), filtrée par sexe acteur/récepteur et accessoires disponibles |
 | `duo.respond_suggestion` | Accepte ou décline la suggestion en cours |
