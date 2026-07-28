@@ -81,8 +81,8 @@ ACCESSORY_CATALOG = [
 
     # Lingerie fine : portée par l'acteur femme, peu importe le récepteur.
     _item("lingerie_fine", "Lingerie fine", ACCESSORY_CATEGORY_LINGERIE, actor_sex=SEX_FEMME),
-    # Déguisement et masque restent génériques (aucun des deux n'est
-    # spécifique à un sexe en particulier).
+    # Déguisement et masque sexy : portés par l'acteur femme, peu importe
+    # le récepteur (même logique que la lingerie fine ci-dessus).
     _item("tenue_legere", "Déguisement sexy femme", ACCESSORY_CATEGORY_LINGERIE, actor_sex=SEX_FEMME),
     _item("masque", "Masque sexy femme", ACCESSORY_CATEGORY_LINGERIE, actor_sex=SEX_FEMME),
 
