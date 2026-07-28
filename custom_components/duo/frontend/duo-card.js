@@ -3,13 +3,16 @@
 // Le contenu affiché reste au niveau des attributs exposés par l'intégration
 // (nom d'activité suggestif, catégorie, intensité, durée, accessoire).
 
-// Phases temporelles d'un rapport (voir PHASE_* dans const.py, basé sur le
-// modèle de Masters & Johnson complété par Kaplan).
+// Phases temporelles d'un rapport (voir PHASE_* dans const.py, inspiré du
+// modèle de Masters & Johnson complété par Kaplan) : encore habillés et
+// début de stimulation (Excitation), contacts avec les zones érogènes
+// (Préliminaires), pénétration intense (Intense), puis tendresse après
+// (Résolution).
 const PHASES = [
   ["", "Aléatoire (toutes phases)"],
-  ["phase_preliminaires", "Préliminaires"],
   ["phase_excitation", "Excitation"],
-  ["phase_plateau", "Plateau"],
+  ["phase_preliminaires", "Préliminaires"],
+  ["phase_intense", "Intense"],
   ["phase_resolution", "Résolution"],
 ];
 

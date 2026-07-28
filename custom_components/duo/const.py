@@ -71,37 +71,45 @@ CATEGORY_LABELS = {
 # ---------------------------------------------------------------------------
 # Phases temporelles d'un rapport, des préliminaires à l'après.
 #
-# S'appuie sur le modèle des 4 phases de la réponse sexuelle de Masters &
-# Johnson (1966) — désir/excitation, plateau, orgasme, résolution — la
-# référence la plus citée en sexologie pour découper un rapport dans le
-# temps, complétée par la phase de désir mise en avant par le modèle
-# triphasique de Kaplan (1979). Une suggestion peut être demandée pour une
-# phase précise afin d'accompagner la progression du moment, plutôt que de
-# proposer n'importe quoi à n'importe quel instant.
+# Inspiré du modèle des phases de la réponse sexuelle de Masters & Johnson
+# (1966) et du modèle triphasique de Kaplan (1979) — les références les
+# plus citées en sexologie pour découper un rapport dans le temps — puis
+# adapté à un usage pratique et concret pour le couple :
+#   1. Excitation    : encore habillés, début de la stimulation (ex. un
+#                       partenaire va mettre une tenue sexy).
+#   2. Préliminaires  : contacts avec les zones érogènes (baisers, caresses
+#                       des doigts ou de la bouche — une pénétration
+#                       digitale relève encore de cette phase).
+#   3. Intense        : actions avec pénétration intense (ex. usage d'un
+#                       accessoire vibrant à deux).
+#   4. Résolution      : retour au calme, tendresse après le rapport.
+# Une suggestion peut être demandée pour une phase précise afin
+# d'accompagner la progression du moment, plutôt que de proposer
+# n'importe quoi à n'importe quel instant.
 # ---------------------------------------------------------------------------
-PHASE_PRELIMINAIRES = "phase_preliminaires"
 PHASE_EXCITATION = "phase_excitation"
-PHASE_PLATEAU = "phase_plateau"
+PHASE_PRELIMINAIRES = "phase_preliminaires"
+PHASE_INTENSE = "phase_intense"
 PHASE_RESOLUTION = "phase_resolution"
 
 PHASES = [
-    PHASE_PRELIMINAIRES,
     PHASE_EXCITATION,
-    PHASE_PLATEAU,
+    PHASE_PRELIMINAIRES,
+    PHASE_INTENSE,
     PHASE_RESOLUTION,
 ]
 
 PHASE_LABELS = {
-    PHASE_PRELIMINAIRES: "Préliminaires",
     PHASE_EXCITATION: "Excitation",
-    PHASE_PLATEAU: "Plateau",
+    PHASE_PRELIMINAIRES: "Préliminaires",
+    PHASE_INTENSE: "Intense",
     PHASE_RESOLUTION: "Résolution",
 }
 
 PHASE_DESCRIPTIONS = {
-    PHASE_PRELIMINAIRES: "Désir et premiers contacts : on prend son temps, on se retrouve.",
-    PHASE_EXCITATION: "L'excitation monte progressivement pour les deux partenaires.",
-    PHASE_PLATEAU: "L'intensité se maintient à son maximum.",
+    PHASE_EXCITATION: "Encore habillés, on commence à se stimuler (ex. une tenue sexy).",
+    PHASE_PRELIMINAIRES: "Contacts avec les zones érogènes : baisers, caresses des doigts ou de la bouche.",
+    PHASE_INTENSE: "Actions avec pénétration intense.",
     PHASE_RESOLUTION: "Retour au calme, tendresse et proximité après le rapport.",
 }
 

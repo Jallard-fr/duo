@@ -23,6 +23,11 @@ Each activity carries:
 - ``phase``: which moment of the encounter the activity typically belongs
   to (see PHASE_* in const.py) — a couple can ask for a suggestion for a
   specific phase to accompany how the moment naturally progresses.
+  Rule of thumb when adding new entries: still-dressed/early stimulation
+  is ``phase_excitation``; kissing, finger or mouth contact on erogenous
+  zones (including digital penetration) is ``phase_preliminaires``; any
+  intense-penetration action (e.g. with a vibrant toy) is ``phase_intense``;
+  post-rapport tenderness is ``phase_resolution``.
 """
 
 from .const import (
@@ -34,7 +39,7 @@ from .const import (
     CATEGORY_RESOLUTION,
     CATEGORY_SENSORIEL,
     PHASE_EXCITATION,
-    PHASE_PLATEAU,
+    PHASE_INTENSE,
     PHASE_PRELIMINAIRES,
     PHASE_RESOLUTION,
     SEX_INDIFFERENT,
@@ -63,7 +68,7 @@ ACTIVITIES = [
     {
         "id": "preliminaires_compliment",
         "category": CATEGORY_PRELIMINAIRES,
-        "phase": PHASE_PRELIMINAIRES,
+        "phase": PHASE_EXCITATION,
         "name": "Compliment chuchoté",
         "description": "Chuchotez à l'oreille de votre partenaire ce que vous appréciez le plus chez lui/elle ce soir.",
         "intensity": 1,
@@ -76,7 +81,7 @@ ACTIVITIES = [
     {
         "id": "preliminaires_caresses_guidees",
         "category": CATEGORY_PRELIMINAIRES,
-        "phase": PHASE_EXCITATION,
+        "phase": PHASE_PRELIMINAIRES,
         "name": "Caresses guidées",
         "description": "Guidez la main de votre partenaire là où vous aimeriez être touché(e) ce soir.",
         "intensity": 2,
@@ -102,7 +107,7 @@ ACTIVITIES = [
     {
         "id": "sensoriel_bandeau",
         "category": CATEGORY_SENSORIEL,
-        "phase": PHASE_EXCITATION,
+        "phase": PHASE_PRELIMINAIRES,
         "name": "Bandeau surprise",
         "description": "Les yeux bandés, laissez votre partenaire vous surprendre par le toucher.",
         "intensity": 3,
@@ -115,7 +120,7 @@ ACTIVITIES = [
     {
         "id": "sensoriel_glacon",
         "category": CATEGORY_SENSORIEL,
-        "phase": PHASE_EXCITATION,
+        "phase": PHASE_PRELIMINAIRES,
         "name": "Glaçon et chaleur",
         "description": "Alternez des sensations froides et chaudes sur la peau, doucement.",
         "intensity": 3,
@@ -128,7 +133,7 @@ ACTIVITIES = [
     {
         "id": "sensoriel_plume",
         "category": CATEGORY_SENSORIEL,
-        "phase": PHASE_EXCITATION,
+        "phase": PHASE_PRELIMINAIRES,
         "name": "Plume et duvet",
         "description": "Des caresses très légères, du bout d'une plume, sur les zones les plus sensibles.",
         "intensity": 2,
@@ -193,7 +198,7 @@ ACTIVITIES = [
     {
         "id": "jeu_de_role_ordres_doux",
         "category": CATEGORY_JEU_DE_ROLE,
-        "phase": PHASE_PLATEAU,
+        "phase": PHASE_PRELIMINAIRES,
         "name": "Consigne du soir",
         "description": "L'un donne une consigne simple à suivre, l'autre est toujours libre de l'accepter ou non.",
         "intensity": 3,
@@ -206,7 +211,7 @@ ACTIVITIES = [
     {
         "id": "communication_fantasme",
         "category": CATEGORY_COMMUNICATION,
-        "phase": PHASE_PRELIMINAIRES,
+        "phase": PHASE_EXCITATION,
         "name": "Confession d'un fantasme",
         "description": "Partagez un fantasme que vous n'avez encore jamais essayé ensemble.",
         "intensity": 1,
@@ -219,7 +224,7 @@ ACTIVITIES = [
     {
         "id": "communication_question_torride",
         "category": CATEGORY_COMMUNICATION,
-        "phase": PHASE_PRELIMINAIRES,
+        "phase": PHASE_EXCITATION,
         "name": "Question intime",
         "description": "Piochez une question intime à laquelle répondre honnêtement, à tour de rôle.",
         "intensity": 1,
@@ -232,7 +237,7 @@ ACTIVITIES = [
     {
         "id": "communication_liste_envies",
         "category": CATEGORY_COMMUNICATION,
-        "phase": PHASE_PRELIMINAIRES,
+        "phase": PHASE_EXCITATION,
         "name": "Liste à deux",
         "description": "Complétez ensemble une liste de choses que vous aimeriez essayer un jour.",
         "intensity": 1,
@@ -245,7 +250,7 @@ ACTIVITIES = [
     {
         "id": "intensite_carte_blanche",
         "category": CATEGORY_INTENSITE_PLUS,
-        "phase": PHASE_PLATEAU,
+        "phase": PHASE_INTENSE,
         "name": "Carte blanche",
         "description": "Le partenaire dont c'est le tour prend l'initiative et fait monter la température, dans le respect des limites fixées dans votre profil.",
         "intensity": 5,
@@ -258,7 +263,7 @@ ACTIVITIES = [
     {
         "id": "intensite_nouveaute",
         "category": CATEGORY_INTENSITE_PLUS,
-        "phase": PHASE_PLATEAU,
+        "phase": PHASE_INTENSE,
         "name": "Nouveauté assumée",
         "description": "Retentez, à deux, quelque chose que vous aviez décliné auparavant — uniquement si vous en avez tous les deux réellement envie ce soir.",
         "intensity": 4,
@@ -271,7 +276,7 @@ ACTIVITIES = [
     {
         "id": "intensite_negociation",
         "category": CATEGORY_INTENSITE_PLUS,
-        "phase": PHASE_PLATEAU,
+        "phase": PHASE_INTENSE,
         "name": "À négocier ensemble",
         "description": "Discutez ensemble de quelque chose de nouveau à essayer ce soir, et mettez-vous d'accord avant de vous lancer.",
         "intensity": 4,
@@ -284,13 +289,26 @@ ACTIVITIES = [
     {
         "id": "intensite_rythme",
         "category": CATEGORY_INTENSITE_PLUS,
-        "phase": PHASE_PLATEAU,
+        "phase": PHASE_INTENSE,
         "name": "Défi de rythme",
         "description": "Alternez qui mène le rythme du moment, en changeant à chaque sonnerie du minuteur.",
         "intensity": 5,
         "duration_min": 10,
         "duration_max": 20,
         "accessory": None,
+        "actor_sex": SEX_INDIFFERENT,
+        "receiver_sex": SEX_INDIFFERENT,
+    },
+    {
+        "id": "intensite_accessoire_vibrant",
+        "category": CATEGORY_INTENSITE_PLUS,
+        "phase": PHASE_INTENSE,
+        "name": "Accessoire à deux",
+        "description": "Intégrez ensemble l'accessoire vibrant de votre choix, au rythme et à l'intensité qui vous conviennent.",
+        "intensity": 5,
+        "duration_min": 10,
+        "duration_max": 25,
+        "accessory": _accessory("vibromasseur", required=False),
         "actor_sex": SEX_INDIFFERENT,
         "receiver_sex": SEX_INDIFFERENT,
     },

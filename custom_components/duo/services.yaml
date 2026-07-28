@@ -132,18 +132,18 @@ request_suggestion:
     phase:
       name: Phase
       description: >-
-        Moment du rapport visé (préliminaires, excitation, plateau,
+        Moment du rapport visé (excitation, préliminaires, intense,
         résolution). Laisser vide pour piocher dans tout le catalogue.
       required: false
       selector:
         select:
           options:
-            - value: phase_preliminaires
-              label: Préliminaires
             - value: phase_excitation
               label: Excitation
-            - value: phase_plateau
-              label: Plateau
+            - value: phase_preliminaires
+              label: Préliminaires
+            - value: phase_intense
+              label: Intense
             - value: phase_resolution
               label: Résolution
 
