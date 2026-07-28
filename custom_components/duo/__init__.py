@@ -43,7 +43,7 @@ PLATFORMS = ["sensor", "select"]
 # aucune ressource Lovelace à ajouter manuellement.
 URL_BASE = "/duo_frontend"
 CARD_FILE = "duo-card.js"
-CARD_VERSION = "0.5.0"  # à incrémenter à chaque modification du JS
+CARD_VERSION = "0.6.0"  # à incrémenter à chaque modification du JS
 FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
 
 SET_PREFERENCE_SCHEMA = vol.Schema(
@@ -105,8 +105,11 @@ CARD_URL = f"{URL_BASE}/{CARD_FILE}?v={CARD_VERSION}"
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Enregistre la carte dès le chargement du composant.
 
-    Volontairement ici et non dans async_setup_entry : la carte reste
-    disponible même si l'entrée de configuration échoue à démarrer.
+    Volontairement ici et non uniquement dans async_setup_entry : la carte
+    reste disponible même si l'entrée de configuration échoue à démarrer.
+    async_setup_entry appelle aussi cette fonction (elle est idempotente)
+    car c'est le seul point dont on est certain qu'il s'exécute réellement
+    quand une entrée Duo est configurée.
     """
     await _async_register_frontend(hass)
     async_at_started(hass, _async_register_lovelace_resource)
@@ -117,19 +120,52 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
     """Sert le fichier de la carte et le déclare au frontend (une seule fois)."""
     if hass.data.get(FRONTEND_KEY):
         return
-    hass.data[FRONTEND_KEY] = True
 
-    await hass.http.async_register_static_paths(
-        [
-            StaticPathConfig(
-                URL_BASE,
-                str(Path(__file__).parent / "frontend"),
-                False,
-            )
-        ]
-    )
-    add_extra_js_url(hass, CARD_URL)
+    try:
+        await hass.http.async_register_static_paths(
+            [
+                StaticPathConfig(
+                    URL_BASE,
+                    str(Path(__file__).parent / "frontend"),
+                    False,
+                )
+            ]
+        )
+        add_extra_js_url(hass, CARD_URL)
+    except Exception as err:  # noqa: BLE001 - ne doit jamais bloquer le démarrage
+        _LOGGER.error(
+            "Duo : échec de l'enregistrement automatique de la carte (%s). "
+            "Ajoutez %s manuellement dans Paramètres > Tableaux de bord > "
+            "Ressources (type « Module JavaScript »).",
+            err,
+            f"{URL_BASE}/{CARD_FILE}",
+            exc_info=True,
+        )
+        await _async_notify_frontend_issue(
+            hass,
+            "Duo n'a pas pu enregistrer sa carte automatiquement",
+            f"Erreur : {err}\n\n"
+            f"Ajoutez la ressource manuellement : Paramètres → Tableaux de "
+            f"bord → Ressources → Ajouter une ressource, type « Module "
+            f"JavaScript », URL `{URL_BASE}/{CARD_FILE}`.",
+        )
+        return
+
+    hass.data[FRONTEND_KEY] = True
     _LOGGER.info("Duo : carte servie sur %s", CARD_URL)
+
+
+async def _async_notify_frontend_issue(hass: HomeAssistant, title: str, message: str) -> None:
+    """Rend un échec d'enregistrement visible dans l'UI, sans dépendre des journaux."""
+    try:
+        await hass.services.async_call(
+            "persistent_notification",
+            "create",
+            {"title": title, "message": message, "notification_id": f"{DOMAIN}_frontend_error"},
+            blocking=False,
+        )
+    except Exception:  # noqa: BLE001 - un échec de notification ne doit rien casser
+        pass
 
 
 async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
@@ -179,10 +215,18 @@ async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
             "Ajoutez %s manuellement dans Paramètres > Tableaux de bord > Ressources.",
             err,
             CARD_URL,
+            exc_info=True,
         )
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    # Refait ici, en plus de async_setup : c'est le seul point dont on est
+    # certain qu'il s'exécute chaque fois qu'une entrée Duo est chargée.
+    # _async_register_frontend est idempotente (elle ressort tout de suite
+    # si déjà enregistrée avec succès).
+    await _async_register_frontend(hass)
+    async_at_started(hass, _async_register_lovelace_resource)
+
     coordinator = DuoCoordinator(hass, entry)
     await coordinator.async_load()
 

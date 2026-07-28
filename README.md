@@ -85,8 +85,11 @@ Un sélecteur en haut de la carte permet à chaque personne qui consulte le tabl
 
 ### La carte ne s'affiche pas ("Custom element doesn't exist: duo-card")
 
-1. Vérifiez dans **Paramètres → Système → Journal** (filtrez sur `duo`) la présence de la ligne `Duo : carte servie sur /duo_frontend/duo-card.js?v=...` après un redémarrage complet. Son absence indique un problème d'enregistrement côté intégration (voir les journaux pour la cause exacte).
-2. Si la ligne est présente mais la carte ne s'affiche toujours pas, fermez complètement l'onglet/l'application (pas seulement un rechargement) et rouvrez le tableau de bord, ou videz les données du site pour l'URL de votre Home Assistant : certains onglets déjà ouverts ou installations en PWA ne relisent la liste des scripts qu'à une navigation complète, pas à une simple reconnexion.
+L'enregistrement de la carte est entièrement automatique : rien à ajouter à la main dans le cas normal. Si ça coince malgré tout :
+
+1. L'enregistrement est maintenant tenté à la fois au chargement du composant et à chaque chargement de l'entrée Duo, ce qui le rend plus fiable qu'avant. En cas d'échec réel, une **notification persistante** apparaît directement dans l'interface Home Assistant (cloche en haut à droite) avec le détail de l'erreur — inutile donc de fouiller les journaux pour le savoir.
+2. Si aucune notification n'apparaît et que la carte ne s'affiche toujours pas après un redémarrage complet, fermez entièrement l'onglet/l'application (pas seulement un rechargement) et rouvrez le tableau de bord : certains onglets déjà ouverts ou installations en PWA ne relisent la liste des scripts qu'à une navigation complète, pas à une simple reconnexion.
+3. En dernier recours, vérifiez dans **Paramètres → Système → Journal** (filtrez sur `duo`) la présence de la ligne `Duo : carte servie sur /duo_frontend/duo-card.js?v=...`.
 3. Vérifiez que l'URL `/duo_frontend/duo-card.js?v=<version>` (le numéro de version doit correspondre à celui du journal) répond bien avec du code JavaScript et non une erreur.
 
 ## Services disponibles
