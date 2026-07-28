@@ -33,10 +33,11 @@ CONF_PERSON2 = "person2"
 # appareils mobile_app rattachés à l'utilisateur.
 CONF_NOTIFY1 = "notify1"
 CONF_NOTIFY2 = "notify2"
-# Champ du formulaire d'options utilisé pour éditer la liste des accessoires
-# du couple. Volontairement pas stocké dans entry.options : la liste réelle
-# reste dans le profil persistant (Store), comme lorsqu'elle est modifiée
-# via le service duo.set_accessories ou depuis la carte.
+# Champ du formulaire d'options utilisé pour cocher, parmi le catalogue
+# prédéfini (voir accessories.py), les accessoires possédés par le couple.
+# Volontairement pas stocké dans entry.options : la liste réelle reste dans
+# le profil persistant (Store), comme lorsqu'elle est modifiée via le
+# service duo.set_accessories ou depuis la carte.
 CONF_ACCESSORIES = "accessories"
 
 CATEGORY_PRELIMINAIRES = "preliminaires"

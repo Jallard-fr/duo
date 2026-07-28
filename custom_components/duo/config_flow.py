@@ -9,6 +9,7 @@ from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
+from .accessories import ACCESSORY_CATALOG, ACCESSORY_CATEGORIES
 from .const import (
     CONF_ACCESSORIES,
     CONF_CONSENT,
@@ -33,6 +34,21 @@ SEX_SELECTOR = selector.SelectSelector(
         options=PARTNER_SEX_OPTIONS,
         translation_key="partner_sex",
         mode=selector.SelectSelectorMode.DROPDOWN,
+    )
+)
+
+_CATEGORY_LABELS = dict(ACCESSORY_CATEGORIES)
+ACCESSORY_SELECTOR = selector.SelectSelector(
+    selector.SelectSelectorConfig(
+        options=[
+            selector.SelectOptionDict(
+                value=item["id"],
+                label=f"{_CATEGORY_LABELS.get(item['category'], item['category'])} · {item['label']}",
+            )
+            for item in ACCESSORY_CATALOG
+        ],
+        multiple=True,
+        mode=selector.SelectSelectorMode.LIST,
     )
 )
 
@@ -117,21 +133,18 @@ class DuoOptionsFlow(config_entries.OptionsFlow):
         partner1 = entry.data[CONF_PARTNER1]
         partner2 = entry.data[CONF_PARTNER2]
         coordinator = self._coordinator()
-        current_accessories = ", ".join(
+        current_accessories = list(
             coordinator.profile.get("accessories", []) if coordinator else []
         )
 
         if user_input is not None:
             person1 = user_input.get(CONF_PERSON1) or ""
             person2 = user_input.get(CONF_PERSON2) or ""
-            accessories_raw = user_input.pop(CONF_ACCESSORIES, "")
+            accessories = user_input.pop(CONF_ACCESSORIES, [])
             if person1 and person1 == person2:
                 errors["base"] = "same_person"
             else:
                 if coordinator is not None:
-                    accessories = [
-                        item.strip() for item in accessories_raw.split(",") if item.strip()
-                    ]
                     await coordinator.async_set_accessories(accessories)
                 return self.async_create_entry(title="", data=user_input)
 
@@ -157,7 +170,7 @@ class DuoOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_ACCESSORIES,
                     description={"suggested_value": current_accessories},
-                ): TEXT_SELECTOR,
+                ): ACCESSORY_SELECTOR,
             }
         )
 

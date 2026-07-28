@@ -14,6 +14,7 @@ from homeassistant.helpers.event import async_track_time_change, async_track_tim
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util, slugify
 
+from .accessories import ACCESSORY_LABELS
 from .activities import ACTIVITIES, get_activity
 from .const import (
     CONF_NOTIFY1,
@@ -262,7 +263,8 @@ class DuoCoordinator:
 
         accessories = evening.get("accessories") or []
         if accessories:
-            lines.append("🧺 Accessoires proposés : " + ", ".join(accessories))
+            labels = [ACCESSORY_LABELS.get(item, item) for item in accessories]
+            lines.append("🧺 Accessoires proposés : " + ", ".join(labels))
 
         if mood == MOOD_NOVELTY:
             idea = evening.get("new_idea")

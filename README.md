@@ -14,7 +14,7 @@ Duo est une intégration [Home Assistant](https://www.home-assistant.io/) + une 
 - **Suggestions à tour de rôle**, pondérées selon les préférences, l'humeur, le sexe acteur/récepteur et les accessoires disponibles.
 - **Chronomètre** intégré, avec une durée aléatoire dans la plage définie pour chaque activité (ou personnalisable).
 - **Mémoire du couple** : les activités déclinées sont mises "en pause" (14 jours par défaut) et ne sont proposées à nouveau automatiquement que si le partenaire concerné choisit explicitement l'humeur "Envie de nouveauté".
-- **Gestion des accessoires** disponibles au sein du couple, utilisés pour filtrer les suggestions compatibles — modifiable depuis la carte ou directement depuis les options de l'intégration.
+- **Catalogue prédéfini d'accessoires**, classé par catégories (sensoriel, jeux de couple, vibrant, contrainte douce, lingerie, soins) : chaque partenaire coche simplement ce qu'il possède déjà, depuis la carte ou les options de l'intégration — plus besoin de saisir quoi que ce soit à la main. Utilisé pour filtrer les suggestions compatibles.
 - **Réinitialisation automatique à minuit** des humeurs du soir.
 - **Historique** des dernières sessions (activité, réponse, tour).
 
@@ -26,6 +26,7 @@ custom_components/duo/
   config_flow.py         Assistant de configuration (prénoms, sexe, consentement, personne HA)
   coordinator.py         État runtime, mémoire persistante, minuteur, notifications
   activities.py          Catalogue des suggestions (texte, non graphique, sexe acteur/récepteur)
+  accessories.py         Catalogue prédéfini d'accessoires, classé par catégories
   sensor.py / select.py  Entités exposées (suggestion, minuteur, humeur, historique, soirée)
   services.yaml          Définition des services appelables
   frontend/duo-card.js   Carte Lovelace (servie automatiquement par l'intégration)

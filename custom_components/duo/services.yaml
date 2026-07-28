@@ -51,7 +51,11 @@ set_accessories:
           integration: duo
     accessories:
       name: Accessoires
-      description: Liste des accessoires disponibles (ex. bandeau, plume, huile de massage).
+      description: >-
+        Liste des identifiants du catalogue prédéfini possédés par le couple
+        (voir custom_components/duo/accessories.py, ex. bandeau, plume,
+        vibromasseur). La carte et les options de l'intégration proposent
+        une case à cocher pour chaque accessoire du catalogue.
       required: true
       selector:
         object:

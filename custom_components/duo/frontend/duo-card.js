@@ -12,6 +12,48 @@ const CATEGORIES = [
   ["intensite_plus", "Intensité +"],
 ];
 
+// Catalogue prédéfini d'accessoires : les partenaires cochent ce qu'ils
+// possèdent déjà plutôt que de saisir du texte libre. Doit rester aligné
+// avec custom_components/duo/accessories.py (mêmes identifiants).
+const ACCESSORY_CATEGORIES = [
+  ["sensoriel", "Sensoriel & bien-être"],
+  ["jeux", "Jeux de couple"],
+  ["vibrant", "Accessoires vibrants"],
+  ["contrainte_douce", "Contrainte douce"],
+  ["lingerie", "Lingerie & tenues"],
+  ["soins", "Soins & confort"],
+];
+
+const ACCESSORY_CATALOG = [
+  { id: "bandeau", label: "Bandeau / masque", category: "sensoriel" },
+  { id: "plume", label: "Plumes", category: "sensoriel" },
+  { id: "glaçons", label: "Glaçons", category: "sensoriel" },
+  { id: "huile de massage", label: "Huile de massage", category: "sensoriel" },
+  { id: "bougie de massage", label: "Bougie de massage basse température", category: "sensoriel" },
+  { id: "foulards", label: "Foulards / liens doux", category: "sensoriel" },
+
+  { id: "des_du_desir", label: "Dés du désir", category: "jeux" },
+  { id: "cartes_jeu_couple", label: "Cartes de jeu pour couple", category: "jeux" },
+  { id: "kit_jeu_de_role", label: "Kit de jeu de rôle / déguisement léger", category: "jeux" },
+  { id: "jeu_societe_coquin", label: "Jeu de société coquin", category: "jeux" },
+
+  { id: "vibromasseur", label: "Vibromasseur", category: "vibrant" },
+  { id: "bague_vibrante", label: "Bague vibrante", category: "vibrant" },
+  { id: "mini_vibro", label: "Mini-vibro discret", category: "vibrant" },
+  { id: "masseur_couple", label: "Masseur pour couple", category: "vibrant" },
+
+  { id: "menottes_douces", label: "Menottes douces", category: "contrainte_douce" },
+  { id: "corde_bondage_debutant", label: "Corde de bondage débutant", category: "contrainte_douce" },
+  { id: "fouet_leger", label: "Fouet léger / palette", category: "contrainte_douce" },
+
+  { id: "lingerie_fine", label: "Lingerie fine", category: "lingerie" },
+  { id: "tenue_legere", label: "Tenue / déguisement léger", category: "lingerie" },
+
+  { id: "lubrifiant", label: "Lubrifiant", category: "soins" },
+  { id: "gel_chauffant", label: "Gel chauffant / rafraîchissant", category: "soins" },
+  { id: "preservatifs", label: "Préservatifs", category: "soins" },
+];
+
 // [clé, libellé, émoticône, intensité 0-4]
 const MOODS = [
   ["pas_ce_soir", "Pas ce soir", "\u{1F634}", 0],
@@ -24,6 +66,14 @@ const MOODS = [
 const MOOD_NOVELTY = "nouveaute";
 const NEW_IDEA_UNKNOWN = "__unknown__";
 const MAX_INTENSITY = 4;
+
+const ACCESSORY_LABELS = Object.fromEntries(
+  ACCESSORY_CATALOG.map((item) => [item.id, item.label])
+);
+
+function accessoryLabel(id) {
+  return ACCESSORY_LABELS[id] || id;
+}
 
 // Thèmes visuels de la carte : surchargent localement (dans le shadow DOM
 // de la carte uniquement) les variables CSS utilisées par son style. Le
@@ -286,7 +336,7 @@ class DuoCard extends HTMLElement {
         <div class="partner-head">${state.emoji || ""} ${esc(name)}${isMe ? " (toi)" : ""}</div>
         <div>${esc(state.mood_label || "")}</div>
         <div class="gauge">${gauge(level)}</div>
-        ${acc.length ? `<div class="meta">\u{1F9FA} Accessoires : ${esc(acc.join(", "))}</div>` : ""}
+        ${acc.length ? `<div class="meta">\u{1F9FA} Accessoires : ${esc(acc.map(accessoryLabel).join(", "))}</div>` : ""}
         ${idea ? `<div class="meta">\u2728 ${esc(idea)}</div>` : ""}
         ${updated ? `<div class="meta">Mis à jour à ${updated}</div>` : ""}
       </div>
@@ -308,7 +358,7 @@ class DuoCard extends HTMLElement {
                  ${accessories
                    .map(
                      (a) =>
-                       `<button class="chip ${draft.accessories.includes(a) ? "on" : ""}" data-accessory="${esc(a)}">${esc(a)}</button>`
+                       `<button class="chip ${draft.accessories.includes(a) ? "on" : ""}" data-accessory="${esc(a)}">${esc(accessoryLabel(a))}</button>`
                    )
                    .join("")}
                </div>`
@@ -555,7 +605,9 @@ class DuoCard extends HTMLElement {
         }
         .chip.on { background: var(--primary-color, #e91e63); color: white; border-color: transparent; }
         .draft input[type="text"] { width: 100%; box-sizing: border-box; margin-bottom: 8px; padding: 8px; }
-        .note { font-size: 0.85em; opacity: 0.7; }
+        .note { font-size: 0.85em; opacity: 0.7; margin-bottom: 8px; }
+        .accessory-group { margin-bottom: 10px; }
+        .accessory-group-title { font-size: 0.8em; font-weight: 600; opacity: 0.75; margin-bottom: 4px; }
       </style>
       <ha-card>
         <div class="title-row">
@@ -636,13 +688,30 @@ class DuoCard extends HTMLElement {
             </div>
           `
           ).join("")}
-          <h3>Accessoires disponibles</h3>
-          <div class="note">La liste actuelle est pré-remplie ci-dessous : modifiez-la puis enregistrez. Elle peut aussi être ajustée depuis la configuration de l'intégration Duo (Paramètres → Appareils et services → Duo → Configurer).</div>
-          <div class="row">
-            <input type="text" id="accessories" placeholder="bandeau, plume, huile de massage, ..."
-              value="${esc((this._eveningData().accessories || []).join(", "))}" />
-            <button id="saveAccessories">Enregistrer</button>
-          </div>
+          <h3>Accessoires possédés par le couple</h3>
+          <div class="note">Cochez ce que vous possédez déjà. Modifiable aussi depuis la configuration de l'intégration Duo (Paramètres → Appareils et services → Duo → Configurer).</div>
+          ${(() => {
+            const owned = this._eveningData().accessories || [];
+            return ACCESSORY_CATEGORIES.map(([catKey, catLabel]) => {
+              const items = ACCESSORY_CATALOG.filter((item) => item.category === catKey);
+              if (!items.length) return "";
+              return `
+                <div class="accessory-group">
+                  <div class="accessory-group-title">${esc(catLabel)}</div>
+                  <div class="chips">
+                    ${items
+                      .map(
+                        (item) => `
+                      <button class="chip accessory-chip ${owned.includes(item.id) ? "on" : ""}"
+                        data-accessory-id="${esc(item.id)}">${esc(item.label)}</button>
+                    `
+                      )
+                      .join("")}
+                  </div>
+                </div>
+              `;
+            }).join("");
+          })()}
         </details>
 
         ${
@@ -713,17 +782,15 @@ class DuoCard extends HTMLElement {
     const stopTimerBtn = root.getElementById("stopTimer");
     if (stopTimerBtn) stopTimerBtn.addEventListener("click", () => this._duoService("stop_timer", {}));
 
-    const saveAccessoriesBtn = root.getElementById("saveAccessories");
-    if (saveAccessoriesBtn) {
-      saveAccessoriesBtn.addEventListener("click", () => {
-        const input = root.getElementById("accessories");
-        const accessories = input.value
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        this._duoService("set_accessories", { accessories });
+    root.querySelectorAll(".accessory-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const owned = new Set(this._eveningData().accessories || []);
+        const id = chip.dataset.accessoryId;
+        if (owned.has(id)) owned.delete(id);
+        else owned.add(id);
+        this._duoService("set_accessories", { accessories: Array.from(owned) });
       });
-    }
+    });
 
     root.querySelectorAll(".pref-slider").forEach((slider) => {
       slider.addEventListener("change", () => {
