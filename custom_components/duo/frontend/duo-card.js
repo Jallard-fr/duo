@@ -9,7 +9,7 @@
 // (Préliminaires), pénétration intense (Intense), puis tendresse après
 // (Résolution).
 const PHASES = [
-  ["", "Aléatoire (toutes phases)"],
+  ["", "Niveau en cours (progression guidée)"],
   ["phase_excitation", "Excitation"],
   ["phase_preliminaires", "Préliminaires"],
   ["phase_intense", "Intense"],
@@ -23,6 +23,15 @@ const CATEGORIES = [
   ["jeu_de_role", "Jeu de rôle"],
   ["communication", "Communication & Fantasmes"],
   ["intensite_plus", "Intensité +"],
+  ["resolution", "Tendresse & après"],
+];
+
+// Choix fermés proposés par le questionnaire de préférences, par catégorie.
+const QUIZ_CHOICES = [
+  ["0", "Jamais", 0],
+  ["2", "Parfois", 2],
+  ["4", "Souvent", 4],
+  ["5", "Toujours", 5],
 ];
 
 // Catalogue d'accessoires : lu dynamiquement depuis les attributs de
@@ -222,6 +231,7 @@ class DuoCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
     this._detailsOpen = this._detailsOpen || {};
+    this._quiz = this._quiz || { open: false, stepIndex: 0, answers: {} };
     if (!this._root) {
       this._root = this.attachShadow({ mode: "open" });
     }
@@ -397,7 +407,68 @@ class DuoCard extends HTMLElement {
       mapped: attrs.mapping_configured !== false,
       me,
       other,
+      sessionPhase: attrs.session_phase,
+      sessionPhaseLabel: attrs.session_phase_label,
     };
+  }
+
+  _renderLevelProgress() {
+    const cfg = this._config;
+    const data = this._eveningData();
+    if (!data.available) return "";
+
+    const progressFor = (partner) => {
+      const state = data.states[partner] || {};
+      const done = state.phase_progress || 0;
+      const target = state.phase_target || 3;
+      return `${esc(partner)} : ${Math.min(done, target)}/${target}`;
+    };
+
+    return `
+      <div class="section level-progress">
+        <h3>Niveau : ${esc(data.sessionPhaseLabel || "-")}</h3>
+        <div class="note">${progressFor(cfg.partner1)} · ${progressFor(cfg.partner2)} activités acceptées avant de passer au niveau suivant.</div>
+      </div>
+    `;
+  }
+
+  // --- Questionnaire de préférences (choix fermés) ------------------------
+
+  _quizPartner() {
+    const data = this._eveningData();
+    return data.me || this._config.partner1;
+  }
+
+  _renderQuizLauncher() {
+    return `
+      <div class="row">
+        <div class="note">Réponds à quelques questions fermées pour affiner ce qui t'est proposé (rejouable à tout moment).</div>
+        <button class="secondary" id="startQuiz">Questionnaire guidé</button>
+      </div>
+    `;
+  }
+
+  _renderQuiz() {
+    const quiz = this._quiz;
+    const [key, label] = CATEGORIES[quiz.stepIndex] || [];
+    if (!key) return "";
+    const partner = this._quizPartner();
+
+    return `
+      <div class="draft">
+        <h4>Questionnaire de ${esc(partner)} — ${quiz.stepIndex + 1}/${CATEGORIES.length}</h4>
+        <div class="note">${esc(label)} : à quelle fréquence aimerais-tu que ce thème te soit proposé ?</div>
+        <div class="chips">
+          ${QUIZ_CHOICES.map(
+            ([value, choiceLabel]) =>
+              `<button class="chip quiz-choice" data-quiz-value="${value}">${esc(choiceLabel)}</button>`
+          ).join("")}
+        </div>
+        <div class="actions">
+          <button class="secondary" id="cancelQuiz">Annuler</button>
+        </div>
+      </div>
+    `;
   }
 
   _renderPartnerBox(name, state, isMe) {
@@ -419,6 +490,13 @@ class DuoCard extends HTMLElement {
         ${acc.length ? `<div class="meta">\u{1F9FA} Accessoires : ${esc(acc.map(accessoryLabel).join(", "))}</div>` : ""}
         ${idea ? `<div class="meta">\u2728 ${esc(idea)}</div>` : ""}
         ${updated ? `<div class="meta">Mis à jour à ${updated}</div>` : ""}
+        ${
+          isMe
+            ? `<button class="chip brave-toggle ${state.brave_taboos ? "on" : ""}" data-brave-partner="${esc(name)}">
+                 ${state.brave_taboos ? "\u{1F513} Interdits bravés" : "\u{1F512} Braver mes interdits"}
+               </button>`
+            : ""
+        }
       </div>
     `;
   }
@@ -512,6 +590,14 @@ class DuoCard extends HTMLElement {
     const root = this._root;
     const data = this._eveningData();
     if (!data.me) return;
+
+    root.querySelectorAll("[data-brave-partner]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const partner = btn.dataset.bravePartner;
+        const current = (data.states[partner] || {}).brave_taboos;
+        this._duoService("set_brave_taboos", { partner, enabled: !current });
+      });
+    });
 
     root.querySelectorAll(".mood-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -701,6 +787,7 @@ class DuoCard extends HTMLElement {
         </div>
 
         ${this._renderTonight()}
+        ${this._renderLevelProgress()}
 
         <div class="section">
           <h3>Suggestion</h3>
@@ -714,7 +801,16 @@ class DuoCard extends HTMLElement {
                 Catégorie : ${suggestion.attributes.category || "-"} ·
                 Phase : ${suggestion.attributes.phase_label || "-"} ·
                 Intensité : ${"♥".repeat(suggestion.attributes.intensity || 0)}${"♡".repeat(5 - (suggestion.attributes.intensity || 0))} ·
-                Durée : ${suggestion.attributes.duration_min}-${suggestion.attributes.duration_max} min
+                ${
+                  suggestion.attributes.duration_mode === "count"
+                    ? `${suggestion.attributes.count_min}-${suggestion.attributes.count_max} ${esc(suggestion.attributes.count_unit || "actions")}`
+                    : `Durée : ${suggestion.attributes.duration_min}-${suggestion.attributes.duration_max} min`
+                }
+                ${
+                  suggestion.attributes.position_label
+                    ? ` · Position : ${esc(suggestion.attributes.position_label)}`
+                    : ""
+                }
                 ${
                   suggestion.attributes.accessory
                     ? ` · Accessoire ${suggestion.attributes.accessory_required ? "requis" : "conseillé"} : ${esc(suggestion.attributes.accessory_label || suggestion.attributes.accessory)}`
@@ -766,6 +862,7 @@ class DuoCard extends HTMLElement {
 
         <details class="section" id="prefsDetails" ${this._detailsOpen.prefs ? "open" : ""}>
           <summary>Préférences &amp; accessoires</summary>
+          ${this._quiz.open ? this._renderQuiz() : this._renderQuizLauncher()}
           <h3>Préférences de ${cfg.partner1}</h3>
           ${CATEGORIES.map(
             ([k, l]) => `
@@ -848,6 +945,38 @@ class DuoCard extends HTMLElement {
         this._detailsOpen.prefs = prefsDetails.open;
       });
     }
+
+    const startQuizBtn = root.getElementById("startQuiz");
+    if (startQuizBtn) {
+      startQuizBtn.addEventListener("click", () => {
+        this._quiz = { open: true, stepIndex: 0, answers: {} };
+        this._detailsOpen.prefs = true;
+        this._render();
+      });
+    }
+    const cancelQuizBtn = root.getElementById("cancelQuiz");
+    if (cancelQuizBtn) {
+      cancelQuizBtn.addEventListener("click", () => {
+        this._quiz = { open: false, stepIndex: 0, answers: {} };
+        this._render();
+      });
+    }
+    root.querySelectorAll(".quiz-choice").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const [key] = CATEGORIES[this._quiz.stepIndex] || [];
+        if (!key) return;
+        this._quiz.answers[key] = Number(btn.dataset.quizValue);
+        this._quiz.stepIndex += 1;
+        if (this._quiz.stepIndex >= CATEGORIES.length) {
+          const partner = this._quizPartner();
+          Object.entries(this._quiz.answers).forEach(([category, rating]) => {
+            this._duoService("set_preference", { partner, category, rating });
+          });
+          this._quiz = { open: false, stepIndex: 0, answers: {} };
+        }
+        this._render();
+      });
+    });
     const historyDetails = root.getElementById("historyDetails");
     if (historyDetails) {
       historyDetails.addEventListener("toggle", () => {

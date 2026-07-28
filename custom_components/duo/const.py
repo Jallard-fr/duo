@@ -113,6 +113,48 @@ PHASE_DESCRIPTIONS = {
     PHASE_RESOLUTION: "Retour au calme, tendresse et proximité après le rapport.",
 }
 
+# ---------------------------------------------------------------------------
+# Positions génériques, proposées comme simple élément de mise en scène pour
+# une activité (jamais associées à une description d'acte explicite).
+# ---------------------------------------------------------------------------
+POSITION_ALLONGE = "position_allonge"
+POSITION_QUATRE_PATTES = "position_quatre_pattes"
+POSITION_PENCHE_AVANT = "position_penche_avant"
+POSITION_DEBOUT = "position_debout"
+POSITION_ASSIS = "position_assis"
+POSITION_GENOUX = "position_genoux"
+
+POSITIONS = [
+    POSITION_ALLONGE,
+    POSITION_QUATRE_PATTES,
+    POSITION_PENCHE_AVANT,
+    POSITION_DEBOUT,
+    POSITION_ASSIS,
+    POSITION_GENOUX,
+]
+
+POSITION_LABELS = {
+    POSITION_ALLONGE: "Allongé(e)",
+    POSITION_QUATRE_PATTES: "À quatre pattes",
+    POSITION_PENCHE_AVANT: "Penché(e) en avant",
+    POSITION_DEBOUT: "Debout",
+    POSITION_ASSIS: "Assis(e)",
+    POSITION_GENOUX: "À genoux",
+}
+
+# ---------------------------------------------------------------------------
+# Progression guidée par niveau (= phase) : santé et plaisir avant tout, donc
+# des activités volontairement courtes (3 minutes maximum, ou quantifiées en
+# nombre d'actions plutôt qu'en temps) plutôt qu'une seule longue séquence.
+# Chaque partenaire doit accepter LEVEL_TARGET_COUNT activités de la phase en
+# cours avant qu'elle ne passe automatiquement à la suivante. En cas de refus,
+# une nouvelle proposition est faite automatiquement, jusqu'à MAX_REROLLS
+# fois avant de laisser la main au couple.
+# ---------------------------------------------------------------------------
+MAX_ACTIVITY_MINUTES = 3
+LEVEL_TARGET_COUNT = 3
+MAX_REROLLS = 4
+
 MOOD_NOT_TONIGHT = "pas_ce_soir"
 MOOD_TENDERNESS = "douceur"
 MOOD_CURIOUS = "curieux"
@@ -182,6 +224,7 @@ SERVICE_START_TIMER = "start_timer"
 SERVICE_STOP_TIMER = "stop_timer"
 SERVICE_RESET_SESSION = "reset_session"
 SERVICE_CLEAR_PROFILE = "clear_profile"
+SERVICE_SET_BRAVE_TABOOS = "set_brave_taboos"
 
 SIGNAL_UPDATE = "duo_update_{entry_id}"
 
@@ -191,11 +234,15 @@ SIGNAL_UPDATE = "duo_update_{entry_id}"
 DECLINE_COOLDOWN_DAYS = 14
 
 DEFAULT_PROFILE = {
-    "preferences": {},  # {partner: {category: rating(0-5)}}
+    "preferences": {},  # {partner: {category: rating(0-5)}} — 0 = jamais proposé
     "accessories": [],  # list[str]
     "moods": {},  # {partner: mood}
     "declined": {},  # {activity_id: iso_timestamp}
     "history": [],  # list of {activity_id, response, timestamp, turn}
+    # Un partenaire qui active "braver ses interdits" redevient éligible aux
+    # catégories qu'il a mises à 0 et aux activités en cooldown, jusqu'à ce
+    # qu'il désactive à nouveau ce mode.
+    "brave_taboos": {},  # {partner: bool}
     # État de la soirée en cours, remis à zéro chaque nuit à minuit.
     # {partner: {"accessories": [...], "new_idea": str|None, "updated": iso}}
     "evening": {},

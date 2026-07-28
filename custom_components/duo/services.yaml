@@ -31,7 +31,9 @@ set_preference:
             - resolution
     rating:
       name: Note
-      description: Niveau d'intérêt de 0 (pas du tout) à 5 (beaucoup).
+      description: >-
+        Niveau d'intérêt de 0 à 5. 0 = catégorie exclue (jamais proposée),
+        sauf si le partenaire a activé "braver ses interdits".
       required: true
       selector:
         number:
@@ -60,6 +62,33 @@ set_accessories:
       required: true
       selector:
         object:
+
+set_brave_taboos:
+  name: Braver ses interdits
+  description: >-
+    Active ou désactive, pour un partenaire, le fait de redevenir éligible
+    aux catégories qu'il a mises à 0 et aux activités récemment déclinées,
+    en vue des prochaines suggestions.
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
+    partner:
+      name: Partenaire
+      description: Prénom du partenaire concerné.
+      required: true
+      selector:
+        text:
+    enabled:
+      name: Activé
+      description: true pour braver ses interdits, false pour revenir au comportement normal.
+      required: true
+      selector:
+        boolean:
 
 set_mood:
   name: Définir l'humeur
@@ -114,7 +143,11 @@ set_mood:
 
 request_suggestion:
   name: Demander une suggestion
-  description: Propose une nouvelle activité à réaliser.
+  description: >-
+    Propose une nouvelle activité à réaliser. En cas de refus, jusqu'à 4
+    nouvelles propositions sont faites automatiquement avant de laisser la
+    main. 3 activités acceptées par personne dans une phase font passer
+    automatiquement à la phase suivante.
   fields:
     entry_id:
       name: Intégration
@@ -133,7 +166,8 @@ request_suggestion:
       name: Phase
       description: >-
         Moment du rapport visé (excitation, préliminaires, intense,
-        résolution). Laisser vide pour piocher dans tout le catalogue.
+        résolution). Laisser vide pour utiliser la phase de la progression
+        guidée en cours.
       required: false
       selector:
         select:

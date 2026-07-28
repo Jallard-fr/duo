@@ -11,6 +11,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .accessories import (
     ACCESSORY_CATALOG,
+    ACCESSORY_CATEGORY_LABELS,
     ACCESSORY_LABELS,
     accessory_categories_as_list,
 )
@@ -18,6 +19,7 @@ from .const import (
     CATEGORY_LABELS,
     DOMAIN,
     PHASE_LABELS,
+    POSITION_LABELS,
     SEX_LABELS,
     SIGNAL_UPDATE,
     STATUS_IDLE,
@@ -96,6 +98,20 @@ class DuoSuggestionSensor(DuoEntityBase):
         receiver = self.coordinator.other_partner(actor) if actor else None
         accessory = activity.get("accessory")
         phase = activity.get("phase")
+        position = activity.get("position")
+
+        if accessory and "id" in accessory:
+            accessory_value = accessory["id"]
+            accessory_label = ACCESSORY_LABELS.get(accessory_value, accessory_value)
+        elif accessory:
+            accessory_value = accessory.get("category")
+            accessory_label = "Un accessoire « {} »".format(
+                ACCESSORY_CATEGORY_LABELS.get(accessory_value, accessory_value)
+            )
+        else:
+            accessory_value = None
+            accessory_label = None
+
         return {
             "status": self.coordinator.current_status,
             "turn": actor,
@@ -108,10 +124,16 @@ class DuoSuggestionSensor(DuoEntityBase):
             "phase_label": PHASE_LABELS.get(phase, phase),
             "description": activity["description"],
             "intensity": activity["intensity"],
+            "duration_mode": activity.get("duration_mode", "time"),
             "duration_min": activity["duration_min"],
             "duration_max": activity["duration_max"],
-            "accessory": accessory["id"] if accessory else None,
-            "accessory_label": ACCESSORY_LABELS.get(accessory["id"]) if accessory else None,
+            "count_min": activity.get("count_min"),
+            "count_max": activity.get("count_max"),
+            "count_unit": activity.get("count_unit"),
+            "position": position,
+            "position_label": POSITION_LABELS.get(position),
+            "accessory": accessory_value,
+            "accessory_label": accessory_label,
             "accessory_required": accessory.get("required", True) if accessory else None,
             "reminder": "Chacun peut refuser à tout moment, sans justification.",
         }
@@ -193,4 +215,9 @@ class DuoEveningSensor(DuoEntityBase):
             "accessory_categories": accessory_categories_as_list(),
             "mapping_configured": self.coordinator.mapping_configured,
             "entry_id": self.entry.entry_id,
+            # Progression guidée par niveau (= phase).
+            "session_phase": self.coordinator.session_phase,
+            "session_phase_label": PHASE_LABELS.get(
+                self.coordinator.session_phase, self.coordinator.session_phase
+            ),
         }

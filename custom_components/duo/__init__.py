@@ -27,6 +27,7 @@ from .const import (
     SERVICE_RESET_SESSION,
     SERVICE_RESPOND_SUGGESTION,
     SERVICE_SET_ACCESSORIES,
+    SERVICE_SET_BRAVE_TABOOS,
     SERVICE_SET_MOOD,
     SERVICE_SET_PREFERENCE,
     SERVICE_START_TIMER,
@@ -44,7 +45,7 @@ PLATFORMS = ["sensor", "select"]
 # aucune ressource Lovelace à ajouter manuellement.
 URL_BASE = "/duo_frontend"
 CARD_FILE = "duo-card.js"
-CARD_VERSION = "0.12.0"  # à incrémenter à chaque modification du JS
+CARD_VERSION = "0.13.0"  # à incrémenter à chaque modification du JS
 FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
 
 SET_PREFERENCE_SCHEMA = vol.Schema(
@@ -60,6 +61,14 @@ SET_ACCESSORIES_SCHEMA = vol.Schema(
     {
         vol.Required("entry_id"): cv.string,
         vol.Required("accessories"): vol.All(cv.ensure_list, [cv.string]),
+    }
+)
+
+SET_BRAVE_TABOOS_SCHEMA = vol.Schema(
+    {
+        vol.Required("entry_id"): cv.string,
+        vol.Required("partner"): cv.string,
+        vol.Required("enabled"): cv.boolean,
     }
 )
 
@@ -277,6 +286,10 @@ def _async_register_services(hass: HomeAssistant) -> None:
         coordinator = _get_coordinator(hass, call.data["entry_id"])
         await coordinator.async_set_accessories(call.data["accessories"])
 
+    async def handle_set_brave_taboos(call: ServiceCall) -> None:
+        coordinator = _get_coordinator(hass, call.data["entry_id"])
+        await coordinator.async_set_brave_taboos(call.data["partner"], call.data["enabled"])
+
     async def handle_set_mood(call: ServiceCall) -> None:
         coordinator = _get_coordinator(hass, call.data["entry_id"])
         user_id = call.context.user_id
@@ -330,6 +343,12 @@ def _async_register_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN, SERVICE_SET_ACCESSORIES, handle_set_accessories, schema=SET_ACCESSORIES_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_BRAVE_TABOOS,
+        handle_set_brave_taboos,
+        schema=SET_BRAVE_TABOOS_SCHEMA,
     )
     hass.services.async_register(
         DOMAIN, SERVICE_SET_MOOD, handle_set_mood, schema=SET_MOOD_SCHEMA

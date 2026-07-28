@@ -94,6 +94,7 @@ ACCESSORY_CATALOG = [
 
 ACCESSORY_LABELS = {item["id"]: item["label"] for item in ACCESSORY_CATALOG}
 ACCESSORY_BY_ID = {item["id"]: item for item in ACCESSORY_CATALOG}
+ACCESSORY_CATEGORY_LABELS = dict(ACCESSORY_CATEGORIES)
 
 
 def accessory_matches_sex(accessory_id: str, actor_sex: str, receiver_sex: str) -> bool:
@@ -110,6 +111,18 @@ def accessory_matches_sex(accessory_id: str, actor_sex: str, receiver_sex: str) 
     actor_ok = item_actor_sex in (SEX_INDIFFERENT, actor_sex)
     receiver_ok = item_receiver_sex in (SEX_INDIFFERENT, receiver_sex)
     return actor_ok and receiver_ok
+
+
+def owned_item_in_category(owned_ids: list[str], category: str, actor_sex: str, receiver_sex: str) -> str | None:
+    """First owned accessory id in `category` that also matches the given
+    actor/receiver sex, if any. Lets an activity reference a whole family of
+    interchangeable accessories (e.g. "un jouet vibrant", quel qu'il soit)
+    instead of a single specific product id."""
+    for accessory_id in owned_ids:
+        item = ACCESSORY_BY_ID.get(accessory_id)
+        if item and item["category"] == category and accessory_matches_sex(accessory_id, actor_sex, receiver_sex):
+            return accessory_id
+    return None
 
 
 def accessories_by_category() -> dict[str, list[dict]]:

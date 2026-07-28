@@ -14,7 +14,7 @@ from homeassistant.helpers.event import async_track_time_change, async_track_tim
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util, slugify
 
-from .accessories import ACCESSORY_LABELS, accessory_matches_sex
+from .accessories import ACCESSORY_LABELS, accessory_matches_sex, owned_item_in_category
 from .activities import ACTIVITIES, get_activity
 from .const import (
     CONF_NOTIFY1,
@@ -27,6 +27,9 @@ from .const import (
     CONF_PERSON2,
     DECLINE_COOLDOWN_DAYS,
     DEFAULT_PROFILE,
+    LEVEL_TARGET_COUNT,
+    MAX_ACTIVITY_MINUTES,
+    MAX_REROLLS,
     MOOD_EMOJI,
     MOOD_INTENSITY,
     MOOD_LABELS,
@@ -34,6 +37,8 @@ from .const import (
     MOOD_NOVELTY,
     NEW_IDEA_UNKNOWN,
     NEW_IDEA_UNKNOWN_LABEL,
+    PHASE_EXCITATION,
+    PHASES,
     SEX_INDIFFERENT,
     SIGNAL_UPDATE,
     STATUS_ACCEPTED,
@@ -67,6 +72,15 @@ class DuoCoordinator:
         self.timer_running: bool = False
         self._timer_unsub = None
         self._midnight_unsub = None
+
+        # Progression guidée par niveau (= phase) : chaque partenaire doit
+        # accepter LEVEL_TARGET_COUNT activités de la phase en cours avant
+        # qu'elle ne passe automatiquement à la suivante. Volontairement pas
+        # persisté : une nouvelle session repart de la phase Excitation.
+        self.session_phase: str = PHASE_EXCITATION
+        self.phase_progress: dict[str, int] = {}
+        self._reroll_count: int = 0
+        self._last_phase: str | None = None
 
     @property
     def partners(self) -> list[str]:
@@ -175,6 +189,7 @@ class DuoCoordinator:
             self.profile.setdefault("preferences", {}).setdefault(partner, {})
             self.profile.setdefault("moods", {}).setdefault(partner, MOOD_NOT_TONIGHT)
             self.profile.setdefault("evening", {}).setdefault(partner, {})
+            self.profile.setdefault("brave_taboos", {}).setdefault(partner, False)
 
         # Remise à zéro automatique chaque nuit à minuit (heure locale).
         self._midnight_unsub = async_track_time_change(
@@ -195,6 +210,17 @@ class DuoCoordinator:
 
     async def async_set_accessories(self, accessories: list[str]) -> None:
         self.profile["accessories"] = list(accessories)
+        await self.async_save()
+        self._signal()
+
+    def brave_taboos(self, partner: str) -> bool:
+        return bool(self.profile.get("brave_taboos", {}).get(partner, False))
+
+    async def async_set_brave_taboos(self, partner: str, enabled: bool) -> None:
+        """Un partenaire qui active ce mode redevient éligible aux catégories
+        qu'il a mises à 0 et aux activités en cooldown, jusqu'à ce qu'il le
+        désactive à nouveau."""
+        self.profile.setdefault("brave_taboos", {})[partner] = bool(enabled)
         await self.async_save()
         self._signal()
 
@@ -251,6 +277,9 @@ class DuoCoordinator:
             "updated": evening.get("updated"),
             "person": self.person_entity_for(partner),
             "user_id": self.user_id_for(partner),
+            "brave_taboos": self.brave_taboos(partner),
+            "phase_progress": self.phase_progress.get(partner, 0),
+            "phase_target": LEVEL_TARGET_COUNT,
         }
 
     def _build_notification(self, partner: str, mood: str, evening: dict) -> tuple[str, str]:
@@ -321,6 +350,9 @@ class DuoCoordinator:
                 "updated": None,
             }
         await self.async_save()
+        # Nouvelle soirée : la progression guidée repart de la phase Excitation.
+        self.session_phase = PHASE_EXCITATION
+        self.phase_progress = {}
         await self.async_reset_session()
         _LOGGER.debug("Duo : humeurs réinitialisées (minuit)")
 
@@ -336,34 +368,41 @@ class DuoCoordinator:
             return False
         return dt_util.utcnow() - declined_dt < timedelta(days=DECLINE_COOLDOWN_DAYS)
 
-    def _owns_accessory(self, accessory_id: str) -> bool:
-        return accessory_id in self.profile.get("accessories", [])
-
-    def _accessory_usable(self, accessory_id: str, actor_sex: str, receiver_sex: str) -> bool:
+    def _accessory_usable(self, accessory: dict, actor_sex: str, receiver_sex: str) -> bool:
         """Owned, and compatible with the current actor/receiver sex pairing
         (e.g. an accessory meant to be worn by a female actor is not usable
-        for a turn where the actor is a man)."""
-        return self._owns_accessory(accessory_id) and accessory_matches_sex(
-            accessory_id, actor_sex, receiver_sex
-        )
+        for a turn where the actor is a man). `accessory` is either
+        {"id": ...} for one specific catalog entry, or {"category": ...} to
+        match any owned item from that whole family (e.g. any vibrant toy)."""
+        owned = self.profile.get("accessories", [])
+        if "id" in accessory:
+            accessory_id = accessory["id"]
+            return accessory_id in owned and accessory_matches_sex(accessory_id, actor_sex, receiver_sex)
+        category = accessory.get("category")
+        return owned_item_in_category(owned, category, actor_sex, receiver_sex) is not None
+
+    def _rating_for(self, partner: str, category: str) -> float:
+        """Note de préférence (0-5) d'un partenaire pour une catégorie. Une
+        note à 0 signifie "jamais" — sauf si ce partenaire a activé le mode
+        "braver ses interdits", auquel cas la catégorie redevient possible,
+        avec une note neutre plutôt que privilégiée."""
+        rating = self.profile.get("preferences", {}).get(partner, {}).get(category, 3)
+        if rating <= 0:
+            return 2.0 if self.brave_taboos(partner) else 0.0
+        return float(rating)
 
     def _weight_for(self, activity: dict, proposer: str, actor_sex: str, receiver_sex: str) -> float:
         """Score an activity from the point of view of the partner proposing it."""
-        rating = (
-            self.profile.get("preferences", {})
-            .get(proposer, {})
-            .get(activity["category"], 3)
-        )
-        weight = float(rating) + 0.1  # keep a small floor so nothing is impossible
+        weight = self._rating_for(proposer, activity["category"])
         accessory = activity.get("accessory")
-        if accessory and not self._accessory_usable(accessory["id"], actor_sex, receiver_sex):
+        if accessory and not self._accessory_usable(accessory, actor_sex, receiver_sex):
             # Un accessoire requis et manquant/incompatible est déjà exclu
             # par _matches_accessory ; ici on ne gère que le cas "conseillé
             # mais pas indispensable", qui reste possible mais moins probable.
             weight *= 0.4
         if self._is_on_cooldown(activity["id"]):
             mood = self.profile.get("moods", {}).get(proposer)
-            if mood == MOOD_NOVELTY:
+            if mood == MOOD_NOVELTY or self.brave_taboos(proposer):
                 weight *= 1.0
             else:
                 weight *= 0.05
@@ -382,7 +421,12 @@ class DuoCoordinator:
             return True
         if not accessory.get("required", True):
             return True
-        return self._accessory_usable(accessory["id"], actor_sex, receiver_sex)
+        return self._accessory_usable(accessory, actor_sex, receiver_sex)
+
+    def _matches_preference(self, activity: dict, proposer: str) -> bool:
+        """Note à 0 = catégorie exclue pour ce partenaire (questionnaire),
+        sauf s'il a débloqué ses interdits."""
+        return self._rating_for(proposer, activity["category"]) > 0
 
     def _matches_phase(self, activity: dict, phase: str | None) -> bool:
         if not phase:
@@ -390,37 +434,42 @@ class DuoCoordinator:
         return activity.get("phase") == phase
 
     async def async_request_suggestion(
-        self, turn: str | None = None, phase: str | None = None
+        self,
+        turn: str | None = None,
+        phase: str | None = None,
+        *,
+        _is_reroll: bool = False,
     ) -> dict:
         """Pick a new activity and propose it to `turn` (the partner performing it,
         i.e. the actor). The other partner is the receiver. `phase` optionally
         restricts the pick to a specific moment of the encounter (see PHASE_*
-        in const.py) instead of picking from the whole catalog."""
+        in const.py); if omitted, the current guided level (`session_phase`)
+        is used instead of picking from the whole catalog at random."""
         partners = self.partners
         if turn not in partners:
             turn = random.choice(partners)
         proposer = self.other_partner(turn)
         actor_sex = self.sex_of(turn)
         receiver_sex = self.sex_of(proposer)
+        effective_phase = phase or self.session_phase
 
-        def _eligible(activity: dict) -> bool:
+        if not _is_reroll:
+            self._reroll_count = 0
+
+        def _eligible(activity: dict, *, with_phase: bool) -> bool:
             return (
                 self._matches_sex(activity, actor_sex, receiver_sex)
                 and self._matches_accessory(activity, actor_sex, receiver_sex)
-                and self._matches_phase(activity, phase)
+                and self._matches_preference(activity, proposer)
+                and (self._matches_phase(activity, effective_phase) if with_phase else True)
             )
 
-        candidates = [activity for activity in ACTIVITIES if _eligible(activity)]
-        if not candidates and phase:
+        candidates = [a for a in ACTIVITIES if _eligible(a, with_phase=True)]
+        if not candidates:
             # Pas de candidat pour cette phase précise (accessoires manquants,
-            # sexe acteur/récepteur...) : on élargit en ignorant la phase
-            # plutôt que de ne rien proposer.
-            candidates = [
-                activity
-                for activity in ACTIVITIES
-                if self._matches_sex(activity, actor_sex, receiver_sex)
-                and self._matches_accessory(activity, actor_sex, receiver_sex)
-            ]
+            # sexe acteur/récepteur, catégorie exclue...) : on élargit en
+            # ignorant la phase plutôt que de ne rien proposer.
+            candidates = [a for a in ACTIVITIES if _eligible(a, with_phase=False)]
         if not candidates:
             # Filet de sécurité : ne jamais se retrouver sans aucun candidat,
             # par ex. si le catalogue a été personnalisé de façon trop stricte.
@@ -438,6 +487,7 @@ class DuoCoordinator:
         self.current_suggestion = activity
         self.current_status = STATUS_PROPOSED
         self.current_turn = turn
+        self._last_phase = effective_phase
         self._signal()
         return activity
 
@@ -450,6 +500,8 @@ class DuoCoordinator:
             self.current_status = STATUS_ACCEPTED
             self.profile.get("declined", {}).pop(activity["id"], None)
             await self._async_log_history(activity, response)
+            self._reroll_count = 0
+            self._async_register_level_progress(activity)
             await self.async_start_timer()
         else:
             self.current_status = STATUS_DECLINED
@@ -457,6 +509,37 @@ class DuoCoordinator:
             await self._async_log_history(activity, response)
             await self.async_save()
             self._signal()
+
+            self._reroll_count += 1
+            if self._reroll_count <= MAX_REROLLS:
+                await self.async_request_suggestion(
+                    turn=self.current_turn, phase=self._last_phase, _is_reroll=True
+                )
+            # Au-delà de MAX_REROLLS refus d'affilée, on laisse la main au
+            # couple plutôt que d'insister automatiquement.
+
+    def _async_register_level_progress(self, activity: dict) -> None:
+        """Comptabilise une activité acceptée pour la progression de niveau,
+        uniquement si elle correspond à la phase guidée en cours (une
+        activité choisie manuellement sur une autre phase n'y contribue
+        pas)."""
+        if activity.get("phase") != self.session_phase:
+            return
+        actor = self.current_turn
+        self.phase_progress[actor] = self.phase_progress.get(actor, 0) + 1
+        if all(self.phase_progress.get(p, 0) >= LEVEL_TARGET_COUNT for p in self.partners):
+            self._advance_session_phase()
+
+    def _advance_session_phase(self) -> None:
+        try:
+            index = PHASES.index(self.session_phase)
+        except ValueError:
+            index = -1
+        if index + 1 < len(PHASES):
+            self.session_phase = PHASES[index + 1]
+        # Déjà à la dernière phase (résolution) : on y reste, la soirée est
+        # "complète" — rien de plus à avancer automatiquement.
+        self.phase_progress = {}
 
     async def _async_log_history(self, activity: dict, response: str) -> None:
         history = self.profile.setdefault("history", [])
@@ -472,12 +555,23 @@ class DuoCoordinator:
         del history[:-50]  # keep the last 50 entries only
         await self.async_save()
 
+    def _effective_duration_minutes(self, activity: dict) -> float:
+        """Durée du minuteur, en minutes. Pour une activité quantifiée en
+        nombre d'actions plutôt qu'en temps, on dérive une durée indicative
+        (~4 s par action) juste pour garder le même minuteur/bips sonores,
+        sans jamais dépasser MAX_ACTIVITY_MINUTES."""
+        if activity.get("duration_mode") == "count":
+            count = random.randint(activity["count_min"], activity["count_max"])
+            seconds = max(20, min(count * 4, MAX_ACTIVITY_MINUTES * 60))
+            return seconds / 60
+        return random.uniform(activity["duration_min"], activity["duration_max"])
+
     async def async_start_timer(self, minutes: float | None = None) -> None:
         if not self.current_suggestion:
             return
         activity = self.current_suggestion
         if minutes is None:
-            minutes = random.uniform(activity["duration_min"], activity["duration_max"])
+            minutes = self._effective_duration_minutes(activity)
 
         self.timer_total_seconds = int(minutes * 60)
         self.timer_remaining_seconds = self.timer_total_seconds
@@ -518,6 +612,7 @@ class DuoCoordinator:
         self.timer_total_seconds = 0
         self.timer_remaining_seconds = 0
         self.timer_running = False
+        self._reroll_count = 0
         self._async_cancel_timer()
         self._signal()
 
@@ -527,6 +622,9 @@ class DuoCoordinator:
             self.profile["preferences"][partner] = {}
             self.profile["moods"][partner] = MOOD_NOT_TONIGHT
             self.profile["evening"][partner] = {}
+            self.profile["brave_taboos"][partner] = False
+        self.session_phase = PHASE_EXCITATION
+        self.phase_progress = {}
         await self.async_save()
         await self.async_reset_session()
 
