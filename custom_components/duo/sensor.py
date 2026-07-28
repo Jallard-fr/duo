@@ -112,29 +112,33 @@ class DuoSuggestionSensor(DuoEntityBase):
             accessory_value = None
             accessory_label = None
 
+        # Le nom réel des partenaires (déjà connu, voir CONF_PARTNER1/2) est
+        # substitué ici dans le titre et la description, pour personnaliser
+        # l'expérience sans jamais afficher les mots "acteur"/"récepteur" —
+        # ce vocabulaire technique reste interne (filtrage par sexe, etc.).
+        title = activity["name"]
+        if accessory_label:
+            title = f"{title} (avec {accessory_label})"
+
+        description = activity["description"]
+        if actor and receiver:
+            description = description.format(actor=actor, receiver=receiver)
+
         return {
             "status": self.coordinator.current_status,
             "turn": actor,
-            "actor": actor,
-            "actor_sex": SEX_LABELS.get(self.coordinator.sex_of(actor)) if actor else None,
-            "receiver": receiver,
-            "receiver_sex": SEX_LABELS.get(self.coordinator.sex_of(receiver)) if receiver else None,
+            "title": title,
             "category": CATEGORY_LABELS.get(activity["category"], activity["category"]),
             "phase": phase,
             "phase_label": PHASE_LABELS.get(phase, phase),
-            "description": activity["description"],
+            "description": description,
             "intensity": activity["intensity"],
             "duration_mode": activity.get("duration_mode", "time"),
-            "duration_min": activity["duration_min"],
-            "duration_max": activity["duration_max"],
-            "count_min": activity.get("count_min"),
-            "count_max": activity.get("count_max"),
+            "duration_minutes": activity.get("duration_minutes"),
+            "count": activity.get("count"),
             "count_unit": activity.get("count_unit"),
             "position": position,
             "position_label": POSITION_LABELS.get(position),
-            "accessory": accessory_value,
-            "accessory_label": accessory_label,
-            "accessory_required": accessory.get("required", True) if accessory else None,
             "reminder": "Chacun peut refuser à tout moment, sans justification.",
         }
 

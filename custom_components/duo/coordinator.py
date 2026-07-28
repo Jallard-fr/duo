@@ -606,15 +606,14 @@ class DuoCoordinator:
         await self.async_save()
 
     def _effective_duration_minutes(self, activity: dict) -> float:
-        """Durée du minuteur, en minutes. Pour une activité quantifiée en
-        nombre d'actions plutôt qu'en temps, on dérive une durée indicative
-        (~4 s par action) juste pour garder le même minuteur/bips sonores,
-        sans jamais dépasser MAX_ACTIVITY_MINUTES."""
+        """Durée du minuteur, en minutes. Fixe (non aléatoire) : pour une
+        activité quantifiée en nombre d'actions plutôt qu'en temps, on dérive
+        une durée indicative (~4 s par action) juste pour garder le même
+        minuteur/bips sonores, sans jamais dépasser MAX_ACTIVITY_MINUTES."""
         if activity.get("duration_mode") == "count":
-            count = random.randint(activity["count_min"], activity["count_max"])
-            seconds = max(20, min(count * 4, MAX_ACTIVITY_MINUTES * 60))
+            seconds = max(20, min(activity["count"] * 4, MAX_ACTIVITY_MINUTES * 60))
             return seconds / 60
-        return random.uniform(activity["duration_min"], activity["duration_max"])
+        return activity["duration_minutes"]
 
     async def async_start_timer(self, minutes: float | None = None) -> None:
         if not self.current_suggestion:

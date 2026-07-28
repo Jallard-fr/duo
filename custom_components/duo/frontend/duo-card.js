@@ -937,32 +937,23 @@ class DuoCard extends HTMLElement {
             suggestion && suggestion.attributes.description
               ? `
             <div class="suggestion-box">
-              <div class="suggestion-name">${suggestion.state}</div>
-              <div class="suggestion-desc">${suggestion.attributes.description}</div>
+              <div class="suggestion-name">${esc(suggestion.attributes.title || suggestion.state)}</div>
+              <div class="suggestion-desc">${esc(suggestion.attributes.description)}</div>
               <div class="meta">
-                Catégorie : ${suggestion.attributes.category || "-"} ·
-                Phase : ${suggestion.attributes.phase_label || "-"} ·
+                Catégorie : ${esc(suggestion.attributes.category || "-")} ·
+                Phase : ${esc(suggestion.attributes.phase_label || "-")} ·
                 Intensité : ${"♥".repeat(suggestion.attributes.intensity || 0)}${"♡".repeat(5 - (suggestion.attributes.intensity || 0))} ·
                 ${
                   suggestion.attributes.duration_mode === "count"
-                    ? `${suggestion.attributes.count_min}-${suggestion.attributes.count_max} ${esc(suggestion.attributes.count_unit || "actions")}`
-                    : `Durée : ${suggestion.attributes.duration_min}-${suggestion.attributes.duration_max} min`
+                    ? `${suggestion.attributes.count} ${esc(suggestion.attributes.count_unit || "actions")}`
+                    : `Durée : ${suggestion.attributes.duration_minutes} min`
                 }
                 ${
                   suggestion.attributes.position_label
                     ? ` · Position : ${esc(suggestion.attributes.position_label)}`
                     : ""
                 }
-                ${
-                  suggestion.attributes.accessory
-                    ? ` · Accessoire ${suggestion.attributes.accessory_required ? "requis" : "conseillé"} : ${esc(suggestion.attributes.accessory_label || suggestion.attributes.accessory)}`
-                    : ""
-                }
-              </div>
-              <div class="meta">
-                Acteur/actrice : <strong>${esc(suggestion.attributes.actor || "-")}</strong>${suggestion.attributes.actor_sex ? ` (${esc(suggestion.attributes.actor_sex)})` : ""}
-                → Récepteur/récip. : <strong>${esc(suggestion.attributes.receiver || "-")}</strong>${suggestion.attributes.receiver_sex ? ` (${esc(suggestion.attributes.receiver_sex)})` : ""}
-                · Statut : ${status}
+                · Statut : ${esc(status)}
               </div>
               <div class="actions">
                 ${
