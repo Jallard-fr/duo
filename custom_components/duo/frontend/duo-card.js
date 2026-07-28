@@ -260,10 +260,91 @@ class DuoCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._handleTimerTick();
     // Ne pas reconstruire le DOM pendant que l'on remplit le panneau
     // « ce soir » : cela ferait perdre le focus et la saisie en cours.
     if (this._draft && this._draft.open) return;
     this._render();
+  }
+
+  // --- Bips du minuteur --------------------------------------------------
+
+  _soundStorageKey() {
+    return `duo-card-sound-muted-${this._config.entry_id || "default"}`;
+  }
+
+  _isSoundMuted() {
+    try {
+      return window.localStorage.getItem(this._soundStorageKey()) === "1";
+    } catch (err) {
+      return false;
+    }
+  }
+
+  _setSoundMuted(muted) {
+    try {
+      window.localStorage.setItem(this._soundStorageKey(), muted ? "1" : "0");
+    } catch (err) {
+      // Stockage indisponible : la préférence ne survivra pas au rechargement.
+    }
+    this._render();
+  }
+
+  _beep(frequency, durationMs, type = "sine") {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!this._audioCtx) this._audioCtx = new AudioCtx();
+      const ctx = this._audioCtx;
+      if (ctx.state === "suspended") ctx.resume();
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = frequency;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      const now = ctx.currentTime;
+      const duration = durationMs / 1000;
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.25, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
+    } catch (err) {
+      // La lecture audio peut échouer (contexte suspendu, permissions...) :
+      // ça ne doit jamais bloquer le reste de la carte.
+    }
+  }
+
+  // Bip toutes les 30 secondes, puis un bip différent chaque seconde durant
+  // les 10 dernières secondes, et un dernier bip distinct à zéro.
+  _handleTimerTick() {
+    const cfg = this._config;
+    if (!cfg || !cfg.timer_entity || !this._hass) return;
+    const timer = this._hass.states[cfg.timer_entity];
+    if (!timer) return;
+
+    const running = !!timer.attributes.running;
+    if (!running) {
+      this._lastBeepSecond = null;
+      return;
+    }
+
+    const remaining = Number(timer.state);
+    if (remaining === this._lastBeepSecond) return;
+    this._lastBeepSecond = remaining;
+
+    if (this._isSoundMuted()) return;
+
+    if (remaining === 0) {
+      this._beep(660, 400, "sine");
+    } else if (remaining <= 10) {
+      this._beep(880, 120, "square");
+    } else if (remaining % 30 === 0) {
+      this._beep(440, 200, "sine");
+    }
   }
 
   getCardSize() {
@@ -673,8 +754,10 @@ class DuoCard extends HTMLElement {
           <h3>Minuteur</h3>
           <div>${fmtTime(remaining)} ${running ? "⏳" : ""}</div>
           <div class="progress-outer"><div class="progress-inner" style="width:${running ? progressPct : 0}%"></div></div>
+          <div class="note">Bip toutes les 30 s, puis un bip différent chaque seconde dans les 10 dernières secondes.</div>
           <div class="actions">
             <button id="stopTimer" ${running ? "" : "disabled"}>Arrêter le minuteur</button>
+            <button class="secondary" id="muteToggle">${this._isSoundMuted() ? "🔇 Son coupé" : "🔊 Son activé"}</button>
           </div>
         </div>
 
@@ -803,6 +886,11 @@ class DuoCard extends HTMLElement {
 
     const stopTimerBtn = root.getElementById("stopTimer");
     if (stopTimerBtn) stopTimerBtn.addEventListener("click", () => this._duoService("stop_timer", {}));
+
+    const muteToggleBtn = root.getElementById("muteToggle");
+    if (muteToggleBtn) {
+      muteToggleBtn.addEventListener("click", () => this._setSoundMuted(!this._isSoundMuted()));
+    }
 
     root.querySelectorAll(".accessory-chip").forEach((chip) => {
       chip.addEventListener("click", () => {
