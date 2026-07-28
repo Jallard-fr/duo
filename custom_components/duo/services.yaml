@@ -17,7 +17,7 @@ set_preference:
         text:
     category:
       name: Catégorie
-      description: Catégorie d'activités (preliminaires, sensoriel, massage, jeu_de_role, communication, intensite_plus).
+      description: Catégorie d'activités.
       required: true
       selector:
         select:
@@ -28,6 +28,7 @@ set_preference:
             - jeu_de_role
             - communication
             - intensite_plus
+            - resolution
     rating:
       name: Note
       description: Niveau d'intérêt de 0 (pas du tout) à 5 (beaucoup).
@@ -128,6 +129,23 @@ request_suggestion:
       required: false
       selector:
         text:
+    phase:
+      name: Phase
+      description: >-
+        Moment du rapport visé (préliminaires, excitation, plateau,
+        résolution). Laisser vide pour piocher dans tout le catalogue.
+      required: false
+      selector:
+        select:
+          options:
+            - value: phase_preliminaires
+              label: Préliminaires
+            - value: phase_excitation
+              label: Excitation
+            - value: phase_plateau
+              label: Plateau
+            - value: phase_resolution
+              label: Résolution
 
 respond_suggestion:
   name: Répondre à une suggestion

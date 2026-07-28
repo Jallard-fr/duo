@@ -336,6 +336,9 @@ class DuoCoordinator:
             return False
         return dt_util.utcnow() - declined_dt < timedelta(days=DECLINE_COOLDOWN_DAYS)
 
+    def _owns_accessory(self, accessory_id: str) -> bool:
+        return accessory_id in self.profile.get("accessories", [])
+
     def _weight_for(self, activity: dict, proposer: str) -> float:
         """Score an activity from the point of view of the partner proposing it."""
         rating = (
@@ -345,8 +348,11 @@ class DuoCoordinator:
         )
         weight = float(rating) + 0.1  # keep a small floor so nothing is impossible
         accessory = activity.get("accessory")
-        if accessory and accessory not in self.profile.get("accessories", []):
-            weight *= 0.15
+        if accessory and not self._owns_accessory(accessory["id"]):
+            # Un accessoire requis et manquant est déjà exclu par
+            # _matches_accessory ; ici on ne gère que le cas "conseillé mais
+            # pas indispensable", qui reste possible mais moins probable.
+            weight *= 0.4
         if self._is_on_cooldown(activity["id"]):
             mood = self.profile.get("moods", {}).get(proposer)
             if mood == MOOD_NOVELTY:
@@ -362,9 +368,26 @@ class DuoCoordinator:
         receiver_ok = activity_receiver_sex in (SEX_INDIFFERENT, receiver_sex)
         return actor_ok and receiver_ok
 
-    async def async_request_suggestion(self, turn: str | None = None) -> dict:
+    def _matches_accessory(self, activity: dict) -> bool:
+        accessory = activity.get("accessory")
+        if not accessory:
+            return True
+        if not accessory.get("required", True):
+            return True
+        return self._owns_accessory(accessory["id"])
+
+    def _matches_phase(self, activity: dict, phase: str | None) -> bool:
+        if not phase:
+            return True
+        return activity.get("phase") == phase
+
+    async def async_request_suggestion(
+        self, turn: str | None = None, phase: str | None = None
+    ) -> dict:
         """Pick a new activity and propose it to `turn` (the partner performing it,
-        i.e. the actor). The other partner is the receiver."""
+        i.e. the actor). The other partner is the receiver. `phase` optionally
+        restricts the pick to a specific moment of the encounter (see PHASE_*
+        in const.py) instead of picking from the whole catalog."""
         partners = self.partners
         if turn not in partners:
             turn = random.choice(partners)
@@ -372,11 +395,24 @@ class DuoCoordinator:
         actor_sex = self.sex_of(turn)
         receiver_sex = self.sex_of(proposer)
 
-        candidates = [
-            activity
-            for activity in ACTIVITIES
-            if self._matches_sex(activity, actor_sex, receiver_sex)
-        ]
+        def _eligible(activity: dict) -> bool:
+            return (
+                self._matches_sex(activity, actor_sex, receiver_sex)
+                and self._matches_accessory(activity)
+                and self._matches_phase(activity, phase)
+            )
+
+        candidates = [activity for activity in ACTIVITIES if _eligible(activity)]
+        if not candidates and phase:
+            # Pas de candidat pour cette phase précise (accessoires manquants,
+            # sexe acteur/récepteur...) : on élargit en ignorant la phase
+            # plutôt que de ne rien proposer.
+            candidates = [
+                activity
+                for activity in ACTIVITIES
+                if self._matches_sex(activity, actor_sex, receiver_sex)
+                and self._matches_accessory(activity)
+            ]
         if not candidates:
             # Filet de sécurité : ne jamais se retrouver sans aucun candidat,
             # par ex. si le catalogue a été personnalisé de façon trop stricte.

@@ -9,7 +9,19 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CATEGORY_LABELS, DOMAIN, SEX_LABELS, SIGNAL_UPDATE, STATUS_IDLE
+from .accessories import (
+    ACCESSORY_CATALOG,
+    ACCESSORY_LABELS,
+    accessory_categories_as_list,
+)
+from .const import (
+    CATEGORY_LABELS,
+    DOMAIN,
+    PHASE_LABELS,
+    SEX_LABELS,
+    SIGNAL_UPDATE,
+    STATUS_IDLE,
+)
 from .coordinator import DuoCoordinator
 
 
@@ -82,6 +94,8 @@ class DuoSuggestionSensor(DuoEntityBase):
             return {"status": STATUS_IDLE}
         actor = self.coordinator.current_turn
         receiver = self.coordinator.other_partner(actor) if actor else None
+        accessory = activity.get("accessory")
+        phase = activity.get("phase")
         return {
             "status": self.coordinator.current_status,
             "turn": actor,
@@ -90,11 +104,15 @@ class DuoSuggestionSensor(DuoEntityBase):
             "receiver": receiver,
             "receiver_sex": SEX_LABELS.get(self.coordinator.sex_of(receiver)) if receiver else None,
             "category": CATEGORY_LABELS.get(activity["category"], activity["category"]),
+            "phase": phase,
+            "phase_label": PHASE_LABELS.get(phase, phase),
             "description": activity["description"],
             "intensity": activity["intensity"],
             "duration_min": activity["duration_min"],
             "duration_max": activity["duration_max"],
-            "accessory": activity.get("accessory"),
+            "accessory": accessory["id"] if accessory else None,
+            "accessory_label": ACCESSORY_LABELS.get(accessory["id"]) if accessory else None,
+            "accessory_required": accessory.get("required", True) if accessory else None,
             "reminder": "Chacun peut refuser à tout moment, sans justification.",
         }
 
@@ -168,6 +186,11 @@ class DuoEveningSensor(DuoEntityBase):
             "available_accessories": list(
                 self.coordinator.profile.get("accessories", [])
             ),
+            # Catalogue de référence exposé ici pour que la carte n'ait pas
+            # sa propre copie du contenu : accessories.py reste la seule
+            # source de vérité, la carte se contente de le lire.
+            "accessory_catalog": ACCESSORY_CATALOG,
+            "accessory_categories": accessory_categories_as_list(),
             "mapping_configured": self.coordinator.mapping_configured,
             "entry_id": self.entry.entry_id,
         }

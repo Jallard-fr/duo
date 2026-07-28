@@ -11,10 +11,11 @@ Duo est une intégration [Home Assistant](https://www.home-assistant.io/) + une 
 - **Profil de préférences** par catégorie (préliminaires, sensoriel, massage, jeu de rôle, communication, intensité+), noté de 0 à 5 par chaque partenaire.
 - **Humeur du soir** : chaque partenaire indique s'il/elle est partant(e), d'humeur douce, curieux(se), envie de nouveauté ou de torride, avec les accessoires qu'il/elle propose et une idée libre à tester. L'autre partenaire est notifié en push sur tous ses appareils mobiles.
 - **Association partenaire ↔ personne Home Assistant** (facultative) : chacun ne peut alors modifier que sa propre humeur, et Duo sait à qui envoyer la notification.
-- **Suggestions à tour de rôle**, pondérées selon les préférences, l'humeur, le sexe acteur/récepteur et les accessoires disponibles.
+- **Suggestions à tour de rôle**, pondérées selon les préférences, l'humeur, le sexe acteur/récepteur, la phase visée et les accessoires disponibles.
+- **Phases temporelles du rapport** : chaque activité est rattachée à un moment — Préliminaires, Excitation, Plateau ou Résolution — repris du modèle des 4 phases de la réponse sexuelle de Masters & Johnson (1966), complété par la phase de désir du modèle triphasique de Kaplan (1979), les deux références les plus citées en sexologie pour structurer un rapport dans le temps. On peut demander une suggestion pour une phase précise (service ou carte) plutôt que de piocher au hasard dans tout le catalogue.
 - **Chronomètre** intégré, avec une durée aléatoire dans la plage définie pour chaque activité (ou personnalisable).
 - **Mémoire du couple** : les activités déclinées sont mises "en pause" (14 jours par défaut) et ne sont proposées à nouveau automatiquement que si le partenaire concerné choisit explicitement l'humeur "Envie de nouveauté".
-- **Catalogue prédéfini d'accessoires**, classé par catégories (sensoriel, jeux de couple, vibrant, contrainte douce, lingerie, soins) : chaque partenaire coche simplement ce qu'il possède déjà, depuis la carte ou les options de l'intégration — plus besoin de saisir quoi que ce soit à la main. Utilisé pour filtrer les suggestions compatibles.
+- **Catalogue prédéfini d'accessoires** (fichier unique `accessories.py`), classé par catégories (sensoriel, jeux de couple, vibrant, contrainte douce, lingerie, soins) : chaque partenaire coche simplement ce qu'il possède déjà, depuis la carte ou les options de l'intégration — plus besoin de saisir quoi que ce soit à la main. Chaque activité indique si son accessoire est **requis** (l'activité n'est proposée que si le couple le possède) ou simplement **conseillé** (l'activité reste possible sans, juste moins souvent proposée).
 - **Réinitialisation automatique à minuit** des humeurs du soir.
 - **Historique** des dernières sessions (activité, réponse, tour).
 
@@ -26,7 +27,7 @@ custom_components/duo/
   config_flow.py         Assistant de configuration (prénoms, sexe, consentement, personne HA)
   coordinator.py         État runtime, mémoire persistante, minuteur, notifications
   activities.py          Catalogue des suggestions (texte, non graphique, sexe acteur/récepteur)
-  accessories.py         Catalogue prédéfini d'accessoires, classé par catégories
+  accessories.py         Catalogue prédéfini d'accessoires (seule source ; lu dynamiquement par la carte)
   sensor.py / select.py  Entités exposées (suggestion, minuteur, humeur, historique, soirée)
   services.yaml          Définition des services appelables
   frontend/duo-card.js   Carte Lovelace (servie automatiquement par l'intégration)
@@ -100,7 +101,7 @@ L'enregistrement de la carte est entièrement automatique : rien à ajouter à l
 | `duo.set_preference` | Enregistre la note (0-5) d'un partenaire pour une catégorie |
 | `duo.set_accessories` | Met à jour la liste des accessoires du couple |
 | `duo.set_mood` | Met à jour l'humeur du soir d'un partenaire (accessoires, idée libre) et notifie l'autre |
-| `duo.request_suggestion` | Propose une nouvelle activité (tour optionnel), filtrée par sexe acteur/récepteur |
+| `duo.request_suggestion` | Propose une nouvelle activité (tour et phase optionnels), filtrée par sexe acteur/récepteur et accessoires disponibles |
 | `duo.respond_suggestion` | Accepte ou décline la suggestion en cours |
 | `duo.start_timer` | (Re)démarre le minuteur, durée personnalisable |
 | `duo.stop_timer` | Arrête le minuteur |
@@ -109,7 +110,9 @@ L'enregistrement de la carte est entièrement automatique : rien à ajouter à l
 
 ## Philosophie du contenu
 
-Toutes les suggestions du catalogue (`custom_components/duo/activities.py`) sont écrites à un niveau **suggestif, catégoriel et non graphique**. Duo ne décrit jamais d'acte sexuel explicite : il propose une ambiance, une durée, un thème et un ciblage acteur/récepteur, et laisse le couple libre de décider, ensemble et dans le respect de leurs limites, comment vivre le moment.
+Toutes les suggestions du catalogue (`custom_components/duo/activities.py`) sont écrites à un niveau **suggestif, catégoriel et non graphique**. Duo ne décrit jamais d'acte sexuel explicite : il propose une ambiance, une durée, un thème, un ciblage acteur/récepteur et une phase, et laisse le couple libre de décider, ensemble et dans le respect de leurs limites, comment vivre le moment.
+
+Le découpage en phases (`custom_components/duo/const.py`, `PHASE_*`) s'appuie sur deux modèles de référence en sexologie : le modèle des 4 phases de la réponse sexuelle de **Masters & Johnson** (*Human Sexual Response*, 1966 — excitation, plateau, orgasme, résolution) et le modèle triphasique de **Helen Singer Kaplan** (1979 — désir, excitation, orgasme), qui a ajouté la phase de désir/préliminaires en amont. Ce sont les deux cadres les plus cités dans la littérature de sexologie pour décrire la progression d'un rapport dans le temps.
 
 ## Licence
 

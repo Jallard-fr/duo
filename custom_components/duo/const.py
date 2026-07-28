@@ -46,6 +46,7 @@ CATEGORY_MASSAGE = "massage"
 CATEGORY_JEU_DE_ROLE = "jeu_de_role"
 CATEGORY_COMMUNICATION = "communication"
 CATEGORY_INTENSITE_PLUS = "intensite_plus"
+CATEGORY_RESOLUTION = "resolution"
 
 CATEGORIES = [
     CATEGORY_PRELIMINAIRES,
@@ -54,6 +55,7 @@ CATEGORIES = [
     CATEGORY_JEU_DE_ROLE,
     CATEGORY_COMMUNICATION,
     CATEGORY_INTENSITE_PLUS,
+    CATEGORY_RESOLUTION,
 ]
 
 CATEGORY_LABELS = {
@@ -63,6 +65,44 @@ CATEGORY_LABELS = {
     CATEGORY_JEU_DE_ROLE: "Jeu de rôle",
     CATEGORY_COMMUNICATION: "Communication & Fantasmes",
     CATEGORY_INTENSITE_PLUS: "Intensité +",
+    CATEGORY_RESOLUTION: "Tendresse & après",
+}
+
+# ---------------------------------------------------------------------------
+# Phases temporelles d'un rapport, des préliminaires à l'après.
+#
+# S'appuie sur le modèle des 4 phases de la réponse sexuelle de Masters &
+# Johnson (1966) — désir/excitation, plateau, orgasme, résolution — la
+# référence la plus citée en sexologie pour découper un rapport dans le
+# temps, complétée par la phase de désir mise en avant par le modèle
+# triphasique de Kaplan (1979). Une suggestion peut être demandée pour une
+# phase précise afin d'accompagner la progression du moment, plutôt que de
+# proposer n'importe quoi à n'importe quel instant.
+# ---------------------------------------------------------------------------
+PHASE_PRELIMINAIRES = "phase_preliminaires"
+PHASE_EXCITATION = "phase_excitation"
+PHASE_PLATEAU = "phase_plateau"
+PHASE_RESOLUTION = "phase_resolution"
+
+PHASES = [
+    PHASE_PRELIMINAIRES,
+    PHASE_EXCITATION,
+    PHASE_PLATEAU,
+    PHASE_RESOLUTION,
+]
+
+PHASE_LABELS = {
+    PHASE_PRELIMINAIRES: "Préliminaires",
+    PHASE_EXCITATION: "Excitation",
+    PHASE_PLATEAU: "Plateau",
+    PHASE_RESOLUTION: "Résolution",
+}
+
+PHASE_DESCRIPTIONS = {
+    PHASE_PRELIMINAIRES: "Désir et premiers contacts : on prend son temps, on se retrouve.",
+    PHASE_EXCITATION: "L'excitation monte progressivement pour les deux partenaires.",
+    PHASE_PLATEAU: "L'intensité se maintient à son maximum.",
+    PHASE_RESOLUTION: "Retour au calme, tendresse et proximité après le rapport.",
 }
 
 MOOD_NOT_TONIGHT = "pas_ce_soir"

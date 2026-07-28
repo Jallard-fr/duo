@@ -3,6 +3,16 @@
 // Le contenu affiché reste au niveau des attributs exposés par l'intégration
 // (nom d'activité suggestif, catégorie, intensité, durée, accessoire).
 
+// Phases temporelles d'un rapport (voir PHASE_* dans const.py, basé sur le
+// modèle de Masters & Johnson complété par Kaplan).
+const PHASES = [
+  ["", "Aléatoire (toutes phases)"],
+  ["phase_preliminaires", "Préliminaires"],
+  ["phase_excitation", "Excitation"],
+  ["phase_plateau", "Plateau"],
+  ["phase_resolution", "Résolution"],
+];
+
 const CATEGORIES = [
   ["preliminaires", "Préliminaires"],
   ["sensoriel", "Sensoriel"],
@@ -12,47 +22,21 @@ const CATEGORIES = [
   ["intensite_plus", "Intensité +"],
 ];
 
-// Catalogue prédéfini d'accessoires : les partenaires cochent ce qu'ils
-// possèdent déjà plutôt que de saisir du texte libre. Doit rester aligné
-// avec custom_components/duo/accessories.py (mêmes identifiants).
-const ACCESSORY_CATEGORIES = [
-  ["sensoriel", "Sensoriel & bien-être"],
-  ["jeux", "Jeux de couple"],
-  ["vibrant", "Accessoires vibrants"],
-  ["contrainte_douce", "Contrainte douce"],
-  ["lingerie", "Lingerie & tenues"],
-  ["soins", "Soins & confort"],
-];
+// Catalogue d'accessoires : lu dynamiquement depuis les attributs de
+// l'entité "soirée" (accessory_catalog / accessory_categories), exposés par
+// l'intégration à partir de custom_components/duo/accessories.py, qui reste
+// la seule source de vérité — la carte n'en garde pas sa propre copie.
+let ACCESSORY_CATALOG = [];
+let ACCESSORY_CATEGORIES = [];
 
-const ACCESSORY_CATALOG = [
-  { id: "bandeau", label: "Bandeau / masque", category: "sensoriel" },
-  { id: "plume", label: "Plumes", category: "sensoriel" },
-  { id: "glaçons", label: "Glaçons", category: "sensoriel" },
-  { id: "huile de massage", label: "Huile de massage", category: "sensoriel" },
-  { id: "bougie de massage", label: "Bougie de massage basse température", category: "sensoriel" },
-  { id: "foulards", label: "Foulards / liens doux", category: "sensoriel" },
-
-  { id: "des_du_desir", label: "Dés du désir", category: "jeux" },
-  { id: "cartes_jeu_couple", label: "Cartes de jeu pour couple", category: "jeux" },
-  { id: "kit_jeu_de_role", label: "Kit de jeu de rôle / déguisement léger", category: "jeux" },
-  { id: "jeu_societe_coquin", label: "Jeu de société coquin", category: "jeux" },
-
-  { id: "vibromasseur", label: "Vibromasseur", category: "vibrant" },
-  { id: "bague_vibrante", label: "Bague vibrante", category: "vibrant" },
-  { id: "mini_vibro", label: "Mini-vibro discret", category: "vibrant" },
-  { id: "masseur_couple", label: "Masseur pour couple", category: "vibrant" },
-
-  { id: "menottes_douces", label: "Menottes douces", category: "contrainte_douce" },
-  { id: "corde_bondage_debutant", label: "Corde de bondage débutant", category: "contrainte_douce" },
-  { id: "fouet_leger", label: "Fouet léger / palette", category: "contrainte_douce" },
-
-  { id: "lingerie_fine", label: "Lingerie fine", category: "lingerie" },
-  { id: "tenue_legere", label: "Tenue / déguisement léger", category: "lingerie" },
-
-  { id: "lubrifiant", label: "Lubrifiant", category: "soins" },
-  { id: "gel_chauffant", label: "Gel chauffant / rafraîchissant", category: "soins" },
-  { id: "preservatifs", label: "Préservatifs", category: "soins" },
-];
+function syncAccessoryCatalog(evAttrs) {
+  if (Array.isArray(evAttrs.accessory_catalog)) {
+    ACCESSORY_CATALOG = evAttrs.accessory_catalog;
+  }
+  if (Array.isArray(evAttrs.accessory_categories)) {
+    ACCESSORY_CATEGORIES = evAttrs.accessory_categories.map((c) => [c.key, c.label]);
+  }
+}
 
 // [clé, libellé, émoticône, intensité 0-4]
 const MOODS = [
@@ -67,12 +51,9 @@ const MOOD_NOVELTY = "nouveaute";
 const NEW_IDEA_UNKNOWN = "__unknown__";
 const MAX_INTENSITY = 4;
 
-const ACCESSORY_LABELS = Object.fromEntries(
-  ACCESSORY_CATALOG.map((item) => [item.id, item.label])
-);
-
 function accessoryLabel(id) {
-  return ACCESSORY_LABELS[id] || id;
+  const found = ACCESSORY_CATALOG.find((item) => item.id === id);
+  return found ? found.label : id;
 }
 
 // Thèmes visuels de la carte : surchargent localement (dans le shadow DOM
@@ -293,6 +274,7 @@ class DuoCard extends HTMLElement {
     const hass = this._hass;
     const entity = cfg.evening_entity ? hass.states[cfg.evening_entity] : null;
     const attrs = entity ? entity.attributes || {} : {};
+    syncAccessoryCatalog(attrs);
     const states = attrs.states || {};
     const myUserId = hass.user ? hass.user.id : null;
 
@@ -632,9 +614,14 @@ class DuoCard extends HTMLElement {
               <div class="suggestion-desc">${suggestion.attributes.description}</div>
               <div class="meta">
                 Catégorie : ${suggestion.attributes.category || "-"} ·
+                Phase : ${suggestion.attributes.phase_label || "-"} ·
                 Intensité : ${"♥".repeat(suggestion.attributes.intensity || 0)}${"♡".repeat(5 - (suggestion.attributes.intensity || 0))} ·
                 Durée : ${suggestion.attributes.duration_min}-${suggestion.attributes.duration_max} min
-                ${suggestion.attributes.accessory ? ` · Accessoire : ${suggestion.attributes.accessory}` : ""}
+                ${
+                  suggestion.attributes.accessory
+                    ? ` · Accessoire ${suggestion.attributes.accessory_required ? "requis" : "conseillé"} : ${esc(suggestion.attributes.accessory_label || suggestion.attributes.accessory)}`
+                    : ""
+                }
               </div>
               <div class="meta">
                 Acteur/actrice : <strong>${esc(suggestion.attributes.actor || "-")}</strong>${suggestion.attributes.actor_sex ? ` (${esc(suggestion.attributes.actor_sex)})` : ""}
@@ -653,6 +640,15 @@ class DuoCard extends HTMLElement {
           `
               : `<div class="suggestion-box">Aucune suggestion pour le moment.</div>`
           }
+          <div class="row">
+            <label for="phasePicker">Phase visée</label>
+            <select id="phasePicker">
+              ${PHASES.map(
+                ([k, l]) =>
+                  `<option value="${k}" ${k === (this._selectedPhase || "") ? "selected" : ""}>${esc(l)}</option>`
+              ).join("")}
+            </select>
+          </div>
           <div class="actions">
             <button id="request">Proposer une activité</button>
             <button class="secondary" id="reset">Réinitialiser</button>
@@ -761,8 +757,20 @@ class DuoCard extends HTMLElement {
 
     this._attachTonightEvents();
 
+    const phasePicker = root.getElementById("phasePicker");
+    if (phasePicker) {
+      phasePicker.addEventListener("change", () => {
+        this._selectedPhase = phasePicker.value;
+      });
+    }
+
     const requestBtn = root.getElementById("request");
-    if (requestBtn) requestBtn.addEventListener("click", () => this._duoService("request_suggestion", {}));
+    if (requestBtn)
+      requestBtn.addEventListener("click", () =>
+        this._duoService("request_suggestion", {
+          ...(this._selectedPhase ? { phase: this._selectedPhase } : {}),
+        })
+      );
 
     const acceptBtn = root.getElementById("accept");
     if (acceptBtn)

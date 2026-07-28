@@ -21,6 +21,7 @@ from .const import (
     CATEGORIES,
     DOMAIN,
     MOOD_OPTIONS,
+    PHASES,
     SERVICE_CLEAR_PROFILE,
     SERVICE_REQUEST_SUGGESTION,
     SERVICE_RESET_SESSION,
@@ -43,7 +44,7 @@ PLATFORMS = ["sensor", "select"]
 # aucune ressource Lovelace à ajouter manuellement.
 URL_BASE = "/duo_frontend"
 CARD_FILE = "duo-card.js"
-CARD_VERSION = "0.8.0"  # à incrémenter à chaque modification du JS
+CARD_VERSION = "0.9.0"  # à incrémenter à chaque modification du JS
 FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
 
 SET_PREFERENCE_SCHEMA = vol.Schema(
@@ -77,6 +78,7 @@ REQUEST_SUGGESTION_SCHEMA = vol.Schema(
     {
         vol.Required("entry_id"): cv.string,
         vol.Optional("turn"): cv.string,
+        vol.Optional("phase"): vol.In(PHASES),
     }
 )
 
@@ -299,7 +301,9 @@ def _async_register_services(hass: HomeAssistant) -> None:
 
     async def handle_request_suggestion(call: ServiceCall) -> None:
         coordinator = _get_coordinator(hass, call.data["entry_id"])
-        await coordinator.async_request_suggestion(call.data.get("turn"))
+        await coordinator.async_request_suggestion(
+            call.data.get("turn"), call.data.get("phase")
+        )
 
     async def handle_respond_suggestion(call: ServiceCall) -> None:
         coordinator = _get_coordinator(hass, call.data["entry_id"])
