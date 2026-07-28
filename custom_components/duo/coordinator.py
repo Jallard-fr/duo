@@ -14,7 +14,7 @@ from homeassistant.helpers.event import async_track_time_change, async_track_tim
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util, slugify
 
-from .accessories import ACCESSORY_LABELS
+from .accessories import ACCESSORY_LABELS, accessory_matches_sex
 from .activities import ACTIVITIES, get_activity
 from .const import (
     CONF_NOTIFY1,
@@ -339,7 +339,15 @@ class DuoCoordinator:
     def _owns_accessory(self, accessory_id: str) -> bool:
         return accessory_id in self.profile.get("accessories", [])
 
-    def _weight_for(self, activity: dict, proposer: str) -> float:
+    def _accessory_usable(self, accessory_id: str, actor_sex: str, receiver_sex: str) -> bool:
+        """Owned, and compatible with the current actor/receiver sex pairing
+        (e.g. an accessory meant to be worn by a female actor is not usable
+        for a turn where the actor is a man)."""
+        return self._owns_accessory(accessory_id) and accessory_matches_sex(
+            accessory_id, actor_sex, receiver_sex
+        )
+
+    def _weight_for(self, activity: dict, proposer: str, actor_sex: str, receiver_sex: str) -> float:
         """Score an activity from the point of view of the partner proposing it."""
         rating = (
             self.profile.get("preferences", {})
@@ -348,10 +356,10 @@ class DuoCoordinator:
         )
         weight = float(rating) + 0.1  # keep a small floor so nothing is impossible
         accessory = activity.get("accessory")
-        if accessory and not self._owns_accessory(accessory["id"]):
-            # Un accessoire requis et manquant est déjà exclu par
-            # _matches_accessory ; ici on ne gère que le cas "conseillé mais
-            # pas indispensable", qui reste possible mais moins probable.
+        if accessory and not self._accessory_usable(accessory["id"], actor_sex, receiver_sex):
+            # Un accessoire requis et manquant/incompatible est déjà exclu
+            # par _matches_accessory ; ici on ne gère que le cas "conseillé
+            # mais pas indispensable", qui reste possible mais moins probable.
             weight *= 0.4
         if self._is_on_cooldown(activity["id"]):
             mood = self.profile.get("moods", {}).get(proposer)
@@ -368,13 +376,13 @@ class DuoCoordinator:
         receiver_ok = activity_receiver_sex in (SEX_INDIFFERENT, receiver_sex)
         return actor_ok and receiver_ok
 
-    def _matches_accessory(self, activity: dict) -> bool:
+    def _matches_accessory(self, activity: dict, actor_sex: str, receiver_sex: str) -> bool:
         accessory = activity.get("accessory")
         if not accessory:
             return True
         if not accessory.get("required", True):
             return True
-        return self._owns_accessory(accessory["id"])
+        return self._accessory_usable(accessory["id"], actor_sex, receiver_sex)
 
     def _matches_phase(self, activity: dict, phase: str | None) -> bool:
         if not phase:
@@ -398,7 +406,7 @@ class DuoCoordinator:
         def _eligible(activity: dict) -> bool:
             return (
                 self._matches_sex(activity, actor_sex, receiver_sex)
-                and self._matches_accessory(activity)
+                and self._matches_accessory(activity, actor_sex, receiver_sex)
                 and self._matches_phase(activity, phase)
             )
 
@@ -411,14 +419,17 @@ class DuoCoordinator:
                 activity
                 for activity in ACTIVITIES
                 if self._matches_sex(activity, actor_sex, receiver_sex)
-                and self._matches_accessory(activity)
+                and self._matches_accessory(activity, actor_sex, receiver_sex)
             ]
         if not candidates:
             # Filet de sécurité : ne jamais se retrouver sans aucun candidat,
             # par ex. si le catalogue a été personnalisé de façon trop stricte.
             candidates = ACTIVITIES
 
-        weights = [self._weight_for(activity, proposer) for activity in candidates]
+        weights = [
+            self._weight_for(activity, proposer, actor_sex, receiver_sex)
+            for activity in candidates
+        ]
         if sum(weights) <= 0:
             weights = [1.0 for _ in candidates]
 

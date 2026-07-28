@@ -56,6 +56,20 @@ function accessoryLabel(id) {
   return found ? found.label : id;
 }
 
+// Petit indice visuel quand un accessoire est associé à un sexe acteur
+// et/ou récepteur précis (voir accessories.py), pour comprendre pourquoi
+// certaines suggestions ne le proposent pas selon qui agit/reçoit.
+function accessorySexHint(item) {
+  const parts = [];
+  if (item.actor_sex && item.actor_sex !== "indifferent") {
+    parts.push(`porté par : ${item.actor_sex}`);
+  }
+  if (item.receiver_sex && item.receiver_sex !== "indifferent") {
+    parts.push(`pour récepteur : ${item.receiver_sex}`);
+  }
+  return parts.length ? ` (${parts.join(", ")})` : "";
+}
+
 // Thèmes visuels de la carte : surchargent localement (dans le shadow DOM
 // de la carte uniquement) les variables CSS utilisées par son style. Le
 // thème "auto" ne surcharge rien et suit donc le thème Home Assistant actif.
@@ -699,7 +713,7 @@ class DuoCard extends HTMLElement {
                       .map(
                         (item) => `
                       <button class="chip accessory-chip ${owned.includes(item.id) ? "on" : ""}"
-                        data-accessory-id="${esc(item.id)}">${esc(item.label)}</button>
+                        data-accessory-id="${esc(item.id)}">${esc(item.label)}${esc(accessorySexHint(item))}</button>
                     `
                       )
                       .join("")}

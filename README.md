@@ -16,6 +16,7 @@ Duo est une intégration [Home Assistant](https://www.home-assistant.io/) + une 
 - **Chronomètre** intégré, avec une durée aléatoire dans la plage définie pour chaque activité (ou personnalisable).
 - **Mémoire du couple** : les activités déclinées sont mises "en pause" (14 jours par défaut) et ne sont proposées à nouveau automatiquement que si le partenaire concerné choisit explicitement l'humeur "Envie de nouveauté".
 - **Catalogue prédéfini d'accessoires** (fichier unique `accessories.py`), classé par catégories (sensoriel, jeux de couple, vibrant, contrainte douce, lingerie, soins) : chaque partenaire coche simplement ce qu'il possède déjà, depuis la carte ou les options de l'intégration — plus besoin de saisir quoi que ce soit à la main. Chaque activité indique si son accessoire est **requis** (l'activité n'est proposée que si le couple le possède) ou simplement **conseillé** (l'activité reste possible sans, juste moins souvent proposée).
+- **Accessoires paramétrés par sexe acteur/récepteur**, sur le même principe que les activités : par ex. la lingerie fine est rattachée à un acteur femme (peu importe le récepteur), un anneau vibrant ou un préservatif à un acteur homme, et les jouets vibrants pensés pour une stimulation féminine à un récepteur femme. Un accessoire incompatible avec le sexe acteur/récepteur du tour en cours est traité comme indisponible pour ce tour.
 - **Réinitialisation automatique à minuit** des humeurs du soir.
 - **Historique** des dernières sessions (activité, réponse, tour).
 
