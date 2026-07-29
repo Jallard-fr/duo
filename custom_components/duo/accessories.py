@@ -125,6 +125,15 @@ def owned_item_in_category(owned_ids: list[str], category: str, actor_sex: str, 
     return None
 
 
+def lingerie_item_ids() -> list[str]:
+    """Identifiants du catalogue appartenant à la catégorie lingerie, pour
+    valider et afficher la tenue qu'une partenaire indique avoir enfilée
+    (voir DuoCoordinator.async_set_lingerie)."""
+    return [
+        item["id"] for item in ACCESSORY_CATALOG if item["category"] == ACCESSORY_CATEGORY_LINGERIE
+    ]
+
+
 def accessories_by_category() -> dict[str, list[dict]]:
     """Group the catalog by category, preserving ACCESSORY_CATEGORIES order."""
     grouped: dict[str, list[dict]] = {key: [] for key, _ in ACCESSORY_CATEGORIES}

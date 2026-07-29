@@ -312,6 +312,7 @@ class DuoCard extends HTMLElement {
     this._config = config || {};
     this._detailsOpen = this._detailsOpen || {};
     this._quiz = this._quiz || { open: false, kind: null, stepIndex: -1, partner: null, answers: {} };
+    this._lingerieDraft = this._lingerieDraft || { open: false, partner: null, items: [] };
     if (!this._root) {
       this._root = this.attachShadow({ mode: "open" });
     }
@@ -357,6 +358,7 @@ class DuoCard extends HTMLElement {
     // Ne pas reconstruire le DOM pendant que l'on remplit le panneau
     // « ce soir » : cela ferait perdre le focus et la saisie en cours.
     if (this._draft && this._draft.open) return;
+    if (this._lingerieDraft && this._lingerieDraft.open) return;
     this._render();
   }
 
@@ -617,6 +619,8 @@ class DuoCard extends HTMLElement {
     const level = state.intensity || 0;
     const acc = state.accessories || [];
     const idea = state.new_idea_label;
+    const lingerieLabels = state.lingerie_labels || [];
+    const isFemme = this._partnerSexes()[name] === "Femme";
     const updated = state.updated
       ? new Date(state.updated).toLocaleTimeString([], {
           hour: "2-digit",
@@ -629,8 +633,21 @@ class DuoCard extends HTMLElement {
         <div>${esc(state.mood_label || "")}</div>
         <div class="gauge">${gauge(level)}</div>
         ${acc.length ? `<div class="meta">\u{1F9FA} Accessoires : ${esc(acc.map(accessoryLabel).join(", "))}</div>` : ""}
+        ${lingerieLabels.length ? `<div class="meta">\u{1F457} Tenue portée : ${esc(lingerieLabels.join(", "))}</div>` : ""}
         ${idea ? `<div class="meta">\u2728 ${esc(idea)}</div>` : ""}
         ${updated ? `<div class="meta">Mis à jour à ${updated}</div>` : ""}
+        ${
+          isMe && isFemme
+            ? `<button class="chip lingerie-toggle ${lingerieLabels.length ? "on" : ""}" data-lingerie-partner="${esc(name)}">
+                 ${lingerieLabels.length ? "\u{1F457} Modifier ma tenue" : "\u{1F457} J'ai enfilé une petite tenue"}
+               </button>`
+            : ""
+        }
+        ${
+          isMe && isFemme && lingerieLabels.length
+            ? `<button class="chip secondary" data-lingerie-clear="${esc(name)}">Je me suis changée</button>`
+            : ""
+        }
         ${
           isMe
             ? `<button class="chip brave-toggle ${state.brave_taboos ? "on" : ""}" data-brave-partner="${esc(name)}">
@@ -681,6 +698,37 @@ class DuoCard extends HTMLElement {
     `;
   }
 
+  _renderLingerieDraft(data) {
+    const draft = this._lingerieDraft;
+    const lingerieOwned = data.accessories.filter((id) => {
+      const item = ACCESSORY_CATALOG.find((i) => i.id === id);
+      return item && item.category === "lingerie";
+    });
+
+    return `
+      <div class="draft">
+        <h4>\u{1F457} Tenue de ${esc(draft.partner)}</h4>
+        ${
+          lingerieOwned.length
+            ? `<div class="note">Qu'as-tu enfilé ce soir ?</div>
+               <div class="chips">
+                 ${lingerieOwned
+                   .map(
+                     (id) =>
+                       `<button class="chip ${draft.items.includes(id) ? "on" : ""}" data-lingerie-item="${esc(id)}">${esc(accessoryLabel(id))}</button>`
+                   )
+                   .join("")}
+               </div>`
+            : `<div class="note">Aucune lingerie enregistrée pour l'instant (voir « Préférences &amp; accessoires » plus bas).</div>`
+        }
+        <div class="actions">
+          <button id="saveLingerie" ${draft.items.length ? "" : "disabled"}>Prévenir ${esc(data.other || "mon/ma partenaire")}</button>
+          <button class="secondary" id="cancelLingerie">Annuler</button>
+        </div>
+      </div>
+    `;
+  }
+
   _renderTonight() {
     const cfg = this._config;
     const data = this._eveningData();
@@ -700,6 +748,7 @@ class DuoCard extends HTMLElement {
     }
 
     const draftOpen = this._draft && this._draft.open;
+    const lingerieOpen = this._lingerieDraft && this._lingerieDraft.open;
 
     return `
       <div class="section">
@@ -707,7 +756,9 @@ class DuoCard extends HTMLElement {
         ${this._renderPartnerBox(data.other, data.states[data.other], false)}
         ${this._renderPartnerBox(data.me, data.states[data.me], true)}
         ${
-          draftOpen
+          lingerieOpen
+            ? this._renderLingerieDraft(data)
+            : draftOpen
             ? this._renderDraft(data)
             : `<div class="note">Ton humeur :</div>
                <div class="moods">
@@ -753,6 +804,55 @@ class DuoCard extends HTMLElement {
         this._render();
       });
     });
+
+    root.querySelectorAll("[data-lingerie-partner]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const partner = btn.dataset.lingeriePartner;
+        const state = data.states[partner] || {};
+        this._lingerieDraft = { open: true, partner, items: [...(state.lingerie || [])] };
+        this._render();
+      });
+    });
+
+    root.querySelectorAll("[data-lingerie-clear]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const partner = btn.dataset.lingerieClear;
+        this._duoService("set_lingerie", { partner, items: [] });
+      });
+    });
+
+    if (this._lingerieDraft && this._lingerieDraft.open) {
+      root.querySelectorAll("[data-lingerie-item]").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          const id = chip.dataset.lingerieItem;
+          const list = this._lingerieDraft.items;
+          const idx = list.indexOf(id);
+          if (idx >= 0) list.splice(idx, 1);
+          else list.push(id);
+          chip.classList.toggle("on");
+          const saveBtn = root.getElementById("saveLingerie");
+          if (saveBtn) saveBtn.disabled = list.length === 0;
+        });
+      });
+
+      const cancelLingerieBtn = root.getElementById("cancelLingerie");
+      if (cancelLingerieBtn) {
+        cancelLingerieBtn.addEventListener("click", () => {
+          this._lingerieDraft = { open: false, partner: null, items: [] };
+          this._render();
+        });
+      }
+
+      const saveLingerieBtn = root.getElementById("saveLingerie");
+      if (saveLingerieBtn) {
+        saveLingerieBtn.addEventListener("click", () => {
+          const draft = this._lingerieDraft;
+          this._duoService("set_lingerie", { partner: draft.partner, items: draft.items });
+          this._lingerieDraft = { open: false, partner: null, items: [] };
+          this._render();
+        });
+      }
+    }
 
     if (!this._draft || !this._draft.open) return;
 

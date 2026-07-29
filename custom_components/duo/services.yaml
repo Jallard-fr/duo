@@ -188,6 +188,40 @@ set_mood:
       selector:
         text:
 
+set_lingerie:
+  name: Déclarer sa tenue
+  description: >-
+    Indique la lingerie que la partenaire a enfilée ce soir (voir
+    accessories.py, catégorie lingerie). Tant que la liste n'est pas vide,
+    les activités qui proposent de s'habiller ne sont plus suggérées pour
+    son tour, et l'autre partenaire reçoit un message adapté à la
+    combinaison choisie. Envoyer une liste vide annule la déclaration.
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
+    partner:
+      name: Partenaire
+      description: >-
+        Prénom du partenaire concerné. Laisser vide pour utiliser la personne
+        associée au compte Home Assistant qui appelle le service. Chacun ne
+        peut déclarer que sa propre tenue.
+      required: false
+      selector:
+        text:
+    items:
+      name: Lingerie portée
+      description: >-
+        Identifiants du catalogue prédéfini (catégorie lingerie) portés ce
+        soir, ex. lingerie_fine, masque, tenue_legere.
+      required: true
+      selector:
+        object:
+
 request_suggestion:
   name: Demander une suggestion
   description: >-
@@ -262,7 +296,7 @@ start_timer:
           integration: duo
     minutes:
       name: Durée (minutes)
-      description: Durée personnalisée en minutes (sinon durée aléatoire dans la plage de l'activité).
+      description: Durée personnalisée en minutes (sinon durée fixe propre à l'activité).
       required: false
       selector:
         number:

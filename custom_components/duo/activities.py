@@ -255,6 +255,37 @@ ACTIVITIES = [
         2, duration=3,
         accessory=_accessory_id("jeu_societe_coquin", required=True),
     ),
+    _activity(
+        "excitation_gage_coquin", CATEGORY_JEU_DE_ROLE, PHASE_EXCITATION,
+        "Gage coquin",
+        "{actor} propose un gage coquin à {receiver}, qui peut l'accepter ou en proposer un autre à la place.",
+        2, duration=2,
+        accessory=_accessory_id("cartes_jeu_couple", required=False),
+    ),
+    _activity(
+        "excitation_mot_coquin", CATEGORY_COMMUNICATION, PHASE_EXCITATION,
+        "Mot coquin glissé à l'oreille",
+        "{actor} glisse à l'oreille de {receiver} une phrase coquine, sans détail, juste de quoi faire monter l'envie.",
+        2, duration=1,
+    ),
+    _activity(
+        "excitation_regard_soutenu", CATEGORY_COMMUNICATION, PHASE_EXCITATION,
+        "Regard soutenu",
+        "{actor} et {receiver} se regardent intensément, en silence, et se laissent approcher lentement l'un de l'autre.",
+        1, duration=1,
+    ),
+    _activity(
+        "excitation_danse_collee", CATEGORY_PRELIMINAIRES, PHASE_EXCITATION,
+        "Danse collée",
+        "{actor} et {receiver} dansent lentement, tout près l'un de l'autre, sur une musique choisie ensemble.",
+        2, duration=3,
+    ),
+    _activity(
+        "excitation_compte_a_rebours", CATEGORY_JEU_DE_ROLE, PHASE_EXCITATION,
+        "Compte à rebours coquin",
+        "{actor} et {receiver} lancent un compte à rebours et s'offrent un geste tendre différent à chaque palier, comme un petit rituel à deux.",
+        2, duration=3,
+    ),
 
     # ------------------------------------------------------------------
     # Phase 2 — Préliminaires : contacts avec les zones érogènes.
@@ -342,6 +373,144 @@ ACTIVITIES = [
         "Attention aux pieds",
         "{actor} masse ou caresse les pieds de {receiver}, pour une sensibilité différente.",
         2, count=(15, "caresses"),
+    ),
+
+    # ------------------------------------------------------------------
+    # Phase 2 (suite) — Zones érogènes : mêmes zones, déclinées selon la
+    # méthode (main, bouche, souffle, objet effleurant) pour multiplier les
+    # variantes sans jamais devenir explicite, plus quelques mises en scène
+    # (yeux bandés, mains liées ou attachées, fouet léger en effleurement
+    # seulement — jamais un coup porté) qui peuvent se combiner à n'importe
+    # laquelle des caresses ci-dessus via les accessoires du couple.
+    # ------------------------------------------------------------------
+    _activity(
+        "preliminaires_oreilles_bouche", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
+        "Lobes sensibles",
+        "{actor} embrasse et mordille délicatement les lobes d'oreille de {receiver}.",
+        3, count=(10, "baisers sur les lobes"),
+    ),
+    _activity(
+        "preliminaires_oreilles_souffle", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Souffle chaud à l'oreille",
+        "{actor} laisse son souffle chaud effleurer l'oreille de {receiver}, tout près, sans un geste.",
+        2, duration=1,
+    ),
+    _activity(
+        "preliminaires_cou_bouche", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
+        "Baisers dans le cou",
+        "{actor} embrasse lentement le cou et la gorge de {receiver}.",
+        3, count=(12, "baisers dans le cou"),
+    ),
+    _activity(
+        "preliminaires_cou_souffle", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Souffle sur la nuque",
+        "{actor} promène son souffle le long du cou de {receiver}, sans le toucher.",
+        2, duration=1,
+    ),
+    _activity(
+        "preliminaires_torse_mains", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
+        "Caresses sur le torse",
+        "{actor} caresse lentement le torse et la poitrine de {receiver}, en variant la pression.",
+        3, count=(20, "caresses"),
+    ),
+    _activity(
+        "preliminaires_torse_bouche", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
+        "Baisers sur la poitrine",
+        "{actor} dépose une série de baisers sur la poitrine de {receiver}, à son rythme.",
+        3, count=(12, "baisers"),
+    ),
+    _activity(
+        "preliminaires_bas_dos_mains", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
+        "Creux des reins",
+        "{actor} caresse le bas du dos et le creux des reins de {receiver}, d'un geste lent et appuyé.",
+        2, count=(15, "caresses"),
+    ),
+    _activity(
+        "preliminaires_bas_dos_objet", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Effleurement du bas du dos",
+        "{actor} effleure le bas du dos de {receiver} avec l'objet choisi, juste assez pour donner des frissons.",
+        3, duration=2,
+        accessory=_accessory_id("plume", required=False),
+    ),
+    _activity(
+        "preliminaires_cuisses_mains", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
+        "Intérieur des cuisses",
+        "{actor} remonte lentement les mains le long de l'intérieur des cuisses de {receiver}.",
+        4, count=(15, "caresses"),
+    ),
+    _activity(
+        "preliminaires_cuisses_souffle", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Souffle sur les cuisses",
+        "{actor} laisse son souffle glisser le long des cuisses de {receiver}, sans les toucher.",
+        3, duration=1,
+    ),
+    _activity(
+        "preliminaires_nombril_bouche", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
+        "Baisers autour du nombril",
+        "{actor} embrasse le ventre et le tour du nombril de {receiver}, en remontant doucement.",
+        3, count=(10, "baisers"),
+    ),
+    _activity(
+        "preliminaires_nombril_objet", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Effleurement du ventre",
+        "{actor} effleure le ventre de {receiver} avec l'objet choisi, en dessinant des cercles lents.",
+        2, duration=2,
+        accessory=_accessory_id("plume", required=False),
+    ),
+    _activity(
+        "preliminaires_genoux_mains", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
+        "Creux des genoux",
+        "{actor} caresse le creux des genoux de {receiver}, une zone sensible souvent oubliée.",
+        2, count=(10, "caresses"),
+    ),
+    _activity(
+        "preliminaires_genoux_objet", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Effleurement derrière les genoux",
+        "{actor} effleure l'arrière des genoux de {receiver} avec l'objet choisi, pour une sensation inattendue.",
+        2, duration=1,
+        accessory=_accessory_id("plume", required=False),
+    ),
+    _activity(
+        "preliminaires_cuir_chevelu", CATEGORY_MASSAGE, PHASE_PRELIMINAIRES,
+        "Caresses dans les cheveux",
+        "{actor} caresse et masse doucement le cuir chevelu de {receiver}, en jouant avec ses cheveux.",
+        1, count=(20, "caresses"),
+    ),
+    _activity(
+        "preliminaires_vagues_de_plaisir", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
+        "Vagues de plaisir",
+        "{actor} alterne, avec {receiver}, des moments de stimulation plus intense et des pauses plus douces, pour faire durer l'envie avant d'aller plus loin.",
+        3, duration=3,
+    ),
+    _activity(
+        "preliminaires_mains_liees_mobiles", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Mains liées, mais mobiles",
+        "Les mains de {receiver} sont liées ensemble avec des liens doux, mais restent libres de bouger, pendant que {actor} prend les initiatives.",
+        3, duration=2,
+        accessory=_accessory_id("foulards", required=True),
+        practice=PRACTICE_LIENS,
+    ),
+    _activity(
+        "preliminaires_mains_attachees_lit", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Mains attachées à la tête de lit",
+        "{actor} attache doucement les mains de {receiver} à la tête de lit, avec un mot d'arrêt clair et respecté par les deux.",
+        4, duration=2,
+        accessory=_accessory_id("menottes_douces", required=True),
+        practice=PRACTICE_LIENS,
+    ),
+    _activity(
+        "preliminaires_fouet_effleurement", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Effleurement au fouet léger",
+        "{actor} effleure la peau de {receiver} avec le petit fouet, sans jamais frapper — juste pour le contact et le contraste des sensations.",
+        3, duration=2,
+        accessory=_accessory_id("fouet_leger", required=True),
+    ),
+    _activity(
+        "preliminaires_liens_effleurement", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Caresse en liens doux",
+        "{actor} fait glisser un lien doux sur la peau de {receiver}, comme une caresse texturée, sans l'attacher.",
+        2, duration=2,
+        accessory=_accessory_id("foulards", required=False),
     ),
 
     # ------------------------------------------------------------------

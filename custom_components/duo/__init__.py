@@ -29,6 +29,7 @@ from .const import (
     SERVICE_RESPOND_SUGGESTION,
     SERVICE_SET_ACCESSORIES,
     SERVICE_SET_BRAVE_TABOOS,
+    SERVICE_SET_LINGERIE,
     SERVICE_SET_MOOD,
     SERVICE_SET_PRACTICE_LIMIT,
     SERVICE_SET_PREFERENCE,
@@ -47,7 +48,7 @@ PLATFORMS = ["sensor", "select"]
 # aucune ressource Lovelace à ajouter manuellement.
 URL_BASE = "/duo_frontend"
 CARD_FILE = "duo-card.js"
-CARD_VERSION = "0.15.0"  # à incrémenter à chaque modification du JS
+CARD_VERSION = "0.16.0"  # à incrémenter à chaque modification du JS
 FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
 
 SET_PREFERENCE_SCHEMA = vol.Schema(
@@ -91,6 +92,15 @@ SET_MOOD_SCHEMA = vol.Schema(
         vol.Required("mood"): vol.In(MOOD_OPTIONS),
         vol.Optional("accessories"): vol.All(cv.ensure_list, [cv.string]),
         vol.Optional("new_idea"): vol.Any(cv.string, None),
+    }
+)
+
+SET_LINGERIE_SCHEMA = vol.Schema(
+    {
+        vol.Required("entry_id"): cv.string,
+        # Facultatif : déduit de l'utilisateur connecté si absent.
+        vol.Optional("partner"): cv.string,
+        vol.Required("items"): vol.All(cv.ensure_list, [cv.string]),
     }
 )
 
@@ -338,6 +348,22 @@ def _async_register_services(hass: HomeAssistant) -> None:
             new_idea=call.data.get("new_idea"),
         )
 
+    async def handle_set_lingerie(call: ServiceCall) -> None:
+        coordinator = _get_coordinator(hass, call.data["entry_id"])
+        user_id = call.context.user_id
+
+        partner = call.data.get("partner") or coordinator.partner_for_user(user_id)
+        if not partner:
+            raise HomeAssistantError(
+                "Impossible de déterminer le partenaire : associez votre compte "
+                "Home Assistant à une personne dans les options de Duo."
+            )
+        if partner not in coordinator.partners:
+            raise HomeAssistantError(f"Partenaire inconnu : {partner}")
+
+        coordinator.check_partner_permission(partner, user_id, what="sa tenue")
+        await coordinator.async_set_lingerie(partner, call.data["items"])
+
     async def handle_request_suggestion(call: ServiceCall) -> None:
         coordinator = _get_coordinator(hass, call.data["entry_id"])
         await coordinator.async_request_suggestion(
@@ -384,6 +410,9 @@ def _async_register_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN, SERVICE_SET_MOOD, handle_set_mood, schema=SET_MOOD_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_LINGERIE, handle_set_lingerie, schema=SET_LINGERIE_SCHEMA
     )
     hass.services.async_register(
         DOMAIN,

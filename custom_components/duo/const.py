@@ -263,6 +263,7 @@ SERVICE_RESET_SESSION = "reset_session"
 SERVICE_CLEAR_PROFILE = "clear_profile"
 SERVICE_SET_BRAVE_TABOOS = "set_brave_taboos"
 SERVICE_SET_PRACTICE_LIMIT = "set_practice_limit"
+SERVICE_SET_LINGERIE = "set_lingerie"
 
 SIGNAL_UPDATE = "duo_update_{entry_id}"
 

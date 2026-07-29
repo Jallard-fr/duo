@@ -14,7 +14,13 @@ from homeassistant.helpers.event import async_track_time_change, async_track_tim
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util, slugify
 
-from .accessories import ACCESSORY_LABELS, accessory_matches_sex, owned_item_in_category
+from .accessories import (
+    ACCESSORY_CATEGORY_LINGERIE,
+    ACCESSORY_LABELS,
+    accessory_matches_sex,
+    lingerie_item_ids,
+    owned_item_in_category,
+)
 from .activities import ACTIVITIES, get_activity
 from .const import (
     CONF_NOTIFY1,
@@ -55,6 +61,25 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+LINGERIE_ITEM_IDS = set(lingerie_item_ids())
+
+# Message envoyé à l'autre partenaire quand une partenaire indique avoir
+# enfilé de la lingerie ce soir (voir DuoCoordinator.async_set_lingerie) : un
+# texte différent selon la combinaison exacte d'articles choisis plutôt
+# qu'une simple liste concaténée, pour que le message reste naturel. La clé
+# est le tuple trié des identifiants d'accessoires (voir accessories.py,
+# catégorie "lingerie") ; une combinaison inconnue retombe sur un message
+# générique construit à partir des libellés.
+LINGERIE_MESSAGES = {
+    ("lingerie_fine",): "{actor} a enfilé de la lingerie fine rien que pour {receiver} ce soir 😘",
+    ("masque",): "{actor} a mis un masque coquin et attend {receiver} avec impatience 😏",
+    ("tenue_legere",): "{actor} s'est glissé(e) dans un déguisement sexy pour {receiver} 🔥",
+    ("lingerie_fine", "masque"): "{actor} porte de la lingerie fine et un masque coquin, prêt(e) à surprendre {receiver} 😘🔥",
+    ("lingerie_fine", "tenue_legere"): "{actor} a enfilé de la lingerie fine sous un déguisement sexy pour {receiver} 🔥",
+    ("masque", "tenue_legere"): "{actor} porte un déguisement sexy et un masque, {receiver} va avoir une surprise 😏",
+    ("lingerie_fine", "masque", "tenue_legere"): "{actor} a mis toute la panoplie — lingerie fine, déguisement et masque — pour {receiver} ce soir 🔥😏",
+}
 
 
 class DuoCoordinator:
@@ -278,11 +303,82 @@ class DuoCoordinator:
         if notify and changed:
             await self._async_notify_partner(partner, mood, evening)
 
+    def lingerie_worn(self, partner: str) -> list[str]:
+        """Lingerie (catégorie accessories.py) que ce partenaire a indiqué
+        avoir enfilée ce soir, le cas échéant."""
+        return list(self.profile.get("evening", {}).get(partner, {}).get("lingerie") or [])
+
+    async def async_set_lingerie(self, partner: str, items: list[str]) -> None:
+        """Une partenaire indique la lingerie qu'elle a enfilée ce soir : les
+        activités qui proposent justement de s'habiller sont alors retirées
+        de la sélection pour son tour (voir _matches_lingerie_state), et
+        l'autre partenaire reçoit un message adapté à la combinaison choisie
+        (voir LINGERIE_MESSAGES). Un identifiant qui n'est ni possédé par le
+        couple ni de catégorie lingerie est silencieusement ignoré."""
+        owned = self.profile.get("accessories", [])
+        chosen = sorted(
+            {item_id for item_id in items if item_id in LINGERIE_ITEM_IDS and item_id in owned}
+        )
+
+        evening = self.profile.setdefault("evening", {}).setdefault(partner, {})
+        previous = list(evening.get("lingerie") or [])
+        evening["lingerie"] = chosen
+        evening["updated"] = dt_util.now().isoformat(timespec="seconds")
+
+        await self.async_save()
+        self._signal()
+
+        if chosen and chosen != previous:
+            await self._async_notify_lingerie(partner, chosen)
+
+    def _build_lingerie_notification(self, partner: str, items: list[str]) -> tuple[str, str]:
+        receiver = self.other_partner(partner)
+        template = LINGERIE_MESSAGES.get(tuple(sorted(items)))
+        if template is None:
+            labels = [ACCESSORY_LABELS.get(item_id, item_id) for item_id in items]
+            template = "{{actor}} a enfilé {} pour {{receiver}} ce soir 😘".format(
+                " et ".join(labels)
+            )
+        title = f"Duo 💞 — {partner}"
+        return title, template.format(actor=partner, receiver=receiver)
+
+    async def _async_notify_lingerie(self, partner: str, items: list[str]) -> None:
+        """Diffuse la tenue déclarée à tous les appareils de l'autre partenaire."""
+        target = self.other_partner(partner)
+        services = self.notify_services_for(target)
+        if not services:
+            _LOGGER.debug(
+                "Duo : aucun appareil de notification trouvé pour %s", target
+            )
+            return
+
+        title, message = self._build_lingerie_notification(partner, items)
+        payload = {
+            "title": title,
+            "message": message,
+            "data": {
+                "channel": "Duo",
+                "importance": "high",
+                "visibility": "private",
+                "notification_icon": "mdi:heart",
+                "tag": f"duo_lingerie_{slugify(partner)}",
+            },
+        }
+
+        for service in services:
+            try:
+                await self.hass.services.async_call(
+                    "notify", service, payload, blocking=False
+                )
+            except Exception:  # noqa: BLE001 - un appareil absent ne doit rien casser
+                _LOGGER.warning("Duo : échec de notification via notify.%s", service)
+
     def evening_state(self, partner: str) -> dict:
         """État de la soirée pour un partenaire, prêt à être exposé."""
         mood = self.profile.get("moods", {}).get(partner, MOOD_NOT_TONIGHT)
         evening = self.profile.get("evening", {}).get(partner, {})
         new_idea = evening.get("new_idea")
+        lingerie = self.lingerie_worn(partner)
         return {
             "mood": mood,
             "mood_label": MOOD_LABELS.get(mood, mood),
@@ -303,6 +399,11 @@ class DuoCoordinator:
             # Notes de préférence par catégorie (0-5). Une catégorie absente
             # équivaut à la note neutre par défaut (3), comme dans _rating_for.
             "preferences": dict(self.profile.get("preferences", {}).get(partner, {})),
+            # Lingerie déclarée ce soir (voir async_set_lingerie) : tant
+            # qu'elle est non vide, les activités d'habillage ne sont plus
+            # proposées pour le tour de ce partenaire.
+            "lingerie": lingerie,
+            "lingerie_labels": [ACCESSORY_LABELS.get(item_id, item_id) for item_id in lingerie],
         }
 
     def _build_notification(self, partner: str, mood: str, evening: dict) -> tuple[str, str]:
@@ -370,6 +471,7 @@ class DuoCoordinator:
             self.profile.setdefault("evening", {})[partner] = {
                 "accessories": [],
                 "new_idea": None,
+                "lingerie": [],
                 "updated": None,
             }
         await self.async_save()
@@ -482,6 +584,21 @@ class DuoCoordinator:
             return True
         return activity.get("phase") == phase
 
+    def _matches_lingerie_state(self, activity: dict, actor: str) -> bool:
+        """Si l'actrice a déjà indiqué avoir enfilé de la lingerie ce soir
+        (voir async_set_lingerie), on ne lui repropose pas une activité
+        d'habillage : c'est déjà fait pour cette soirée."""
+        accessory = activity.get("accessory")
+        if not accessory:
+            return True
+        is_lingerie = (
+            accessory.get("category") == ACCESSORY_CATEGORY_LINGERIE
+            or accessory.get("id") in LINGERIE_ITEM_IDS
+        )
+        if not is_lingerie:
+            return True
+        return not self.lingerie_worn(actor)
+
     async def async_request_suggestion(
         self,
         turn: str | None = None,
@@ -511,6 +628,7 @@ class DuoCoordinator:
                 and self._matches_accessory(activity, actor_sex, receiver_sex)
                 and self._matches_preference(activity, proposer)
                 and self._matches_practice_limits(activity, turn, proposer)
+                and self._matches_lingerie_state(activity, turn)
                 and (self._matches_phase(activity, effective_phase) if with_phase else True)
             )
 
