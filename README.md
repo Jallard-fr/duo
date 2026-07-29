@@ -1,5 +1,9 @@
 # Duo — Intimité de couple pour Home Assistant
 
+<p align="center">
+  <img src="assets/logo.png" alt="Logo Duo" width="200">
+</p>
+
 Duo est une intégration [Home Assistant](https://www.home-assistant.io/) + une carte Lovelace dédiées aux couples adultes qui souhaitent pimenter leur vie intime, de façon ludique, textuelle et consentie.
 
 > ⚠️ **Application réservée aux adultes (18 ans et plus).** L'installation demande une confirmation explicite de majorité et de consentement mutuel. Le contenu proposé reste volontairement **suggestif et non graphique** : Duo propose des thèmes et une ambiance, jamais des instructions explicites détaillées. Chaque partenaire peut refuser une suggestion à tout moment, sans justification. **La santé passe avant tout** : le catalogue exclut délibérément toute pratique présentant un risque physique réel — l'application sert uniquement le plaisir, jamais au détriment de la sécurité.
@@ -98,7 +102,20 @@ custom_components/duo/
   frontend/duo-card.js     Carte Lovelace (servie automatiquement par l'intégration)
 
 hacs.json                Métadonnées pour une installation via HACS
+
+assets/
+  logo.png                Logo affiché en bannière dans ce README
+  brand/icon.png           Icône carrée 256x256 prête pour une soumission à
+                          home-assistant/brands (icône affichée dans
+                          Réglages > Appareils et services une fois validée)
+  brand/logo.png           Logo prêt pour la même soumission
 ```
+
+### Logo et icône dans Home Assistant
+
+Le logo (`assets/logo.png`) illustre déjà ce README. Pour qu'il apparaisse aussi à côté de "Duo" dans **Réglages > Appareils et services**, Home Assistant ne lit pas d'image locale au dépôt : il va la chercher sur [brands.home-assistant.io](https://brands.home-assistant.io/), généré à partir du dépôt communautaire [home-assistant/brands](https://github.com/home-assistant/brands). Les fichiers `assets/brand/icon.png` et `assets/brand/logo.png` de ce dépôt sont déjà au bon format (PNG carré 256x256) pour être copiés vers `custom_integrations/duo/` dans ce dépôt-là et proposés en pull request — c'est une démarche séparée, sur un autre dépôt GitHub, qui suit sa propre revue communautaire.
+
+Home Assistant ne permet pas d'associer une image personnalisée à l'onglet du navigateur ou au nom d'un onglet/panneau : ces éléments utilisent soit la favicon globale de l'instance (réglée une fois pour toute l'installation, pas par intégration), soit une icône Material Design Icons (`mdi:...`) pour les panneaux et entités — jamais une image arbitraire. Une fois l'icône validée sur home-assistant/brands, elle apparaît uniquement dans la liste des intégrations, pas dans les onglets.
 
 ### Installation
 
