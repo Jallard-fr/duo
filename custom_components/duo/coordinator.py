@@ -551,10 +551,13 @@ class DuoCoordinator:
         return self.entry.options.get(CONF_DASHBOARD_PATH) or "/lovelace/0"
 
     def _response_actions(self) -> list[dict]:
-        """Actions de la notification mobile : deux gros boutons distincts,
+        """Actions de la notification mobile : trois gros boutons distincts,
         rendus nativement par l'app (donc impossible à confondre l'un avec
-        l'autre), qui déclenchent async_respond_to_overture via l'événement
-        mobile_app_notification_action écouté dans __init__.py."""
+        l'autre). Les deux premiers déclenchent async_respond_to_overture via
+        l'événement mobile_app_notification_action écouté dans __init__.py ;
+        le troisième ouvre directement la carte Duo (voir "uri", géré
+        nativement par l'appli mobile) pour répondre depuis là — accepter,
+        décliner, changer d'humeur..."""
         entry_id = self.entry.entry_id
         return [
             {
@@ -564,6 +567,11 @@ class DuoCoordinator:
             {
                 "action": f"duo_response_{entry_id}_plus_tard",
                 "title": "🕒 Peut-être plus tard",
+            },
+            {
+                "action": f"duo_open_{entry_id}",
+                "title": "😏 Ça m'intéresse",
+                "uri": self._dashboard_url(),
             },
         ]
 
