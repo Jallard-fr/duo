@@ -67,6 +67,13 @@ Each activity carries:
   point of view, alongside the restraint tag ``(PRACTICE_LIENS, "donne")``.
   PRACTICE_ANAL has no tagged entry yet since nothing in this catalog is
   anal-specific — the couple's answer is still recorded for future use.
+- ``intense_stage``: ``None``, ``"early"`` or ``"late"`` — splits
+  ``phase_intense`` into the two-part, 4-tour progression described in
+  const.py (see PHASE_TARGET_COUNTS / INTENSE_TARGET_COUNT): "early" acts
+  (oral, doigtage intense, jouet vibrant) are only proposed on tours 1-2,
+  "late" acts (positions nommées) only on tours 3-4. ``None`` means the
+  activity isn't part of that progression and stays proposable throughout
+  the phase (e.g. la fessée légère).
 """
 
 from .const import (
@@ -123,6 +130,7 @@ def _activity(
     penetration: bool = False,
     actor_sex: str = SEX_INDIFFERENT,
     receiver_sex: str = SEX_INDIFFERENT,
+    intense_stage: str | None = None,
 ) -> dict:
     if (duration is None) == (count is None):
         raise ValueError(f"{activity_id}: set exactly one of duration= or count=")
@@ -162,6 +170,7 @@ def _activity(
         "penetration": penetration,
         "actor_sex": actor_sex,
         "receiver_sex": receiver_sex,
+        "intense_stage": intense_stage,
         **mode_fields,
     }
 
@@ -652,48 +661,12 @@ ACTIVITIES = [
     # Phase 3 — Intense : actions avec pénétration intense.
     # ------------------------------------------------------------------
     _activity(
-        "intense_carte_blanche", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Carte blanche",
-        "{actor} prend l'initiative avec {receiver} et fait monter la température, dans le respect des limites fixées dans leur profil.",
-        5, duration=3,
-    ),
-    _activity(
-        "intense_nouveaute", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Nouveauté assumée",
-        "{actor} et {receiver} retentent, à deux, quelque chose qu'ils avaient décliné auparavant — uniquement s'ils en ont tous les deux réellement envie ce soir.",
-        4, duration=3,
-    ),
-    _activity(
-        "intense_negociation", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "À négocier ensemble",
-        "{actor} et {receiver} discutent ensemble de quelque chose de nouveau à essayer ce soir, et se mettent d'accord avant de se lancer.",
-        4, duration=2,
-    ),
-    _activity(
-        "intense_rythme", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Défi de rythme",
-        "{actor} et {receiver} alternent qui mène le rythme du moment, en changeant à chaque sonnerie du minuteur.",
-        5, duration=3,
-    ),
-    _activity(
         "intense_accessoire_vibrant", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
         "Accessoire à deux",
         "{actor} et {receiver} intègrent ensemble l'accessoire vibrant qu'ils possèdent, au rythme et à l'intensité qui leur conviennent.",
         5, duration=3,
         accessory=_accessory_category("vibrant", required=False),
         practice=PRACTICE_JOUETS,
-    ),
-    _activity(
-        "intense_rythme_lent", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Ralenti assumé",
-        "{actor} et {receiver} ralentissent consciemment chaque geste, sans chercher à accélérer.",
-        3, duration=3,
-    ),
-    _activity(
-        "intense_instant_rapide", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Instant bref",
-        "{actor} et {receiver} s'accordent un moment bref et intense, sans préambule, pour changer du rythme habituel.",
-        5, duration=1,
     ),
     _activity(
         "intense_discipline_legere", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
@@ -732,42 +705,6 @@ ACTIVITIES = [
         1, duration=1,
         accessory=_accessory_id("preservatifs", required=False),
         actor_sex=SEX_HOMME,
-    ),
-    _activity(
-        "intense_position_allonge", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Position : allongé",
-        "{actor} et {receiver} s'installent allongés, comme ils le sentent sur le moment.",
-        4, duration=1, position=POSITION_ALLONGE,
-    ),
-    _activity(
-        "intense_position_quatre_pattes", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Position : à quatre pattes",
-        "{actor} et {receiver} passent à la position à quatre pattes, à leur rythme.",
-        4, duration=1, position=POSITION_QUATRE_PATTES,
-    ),
-    _activity(
-        "intense_position_penche_avant", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Position : penché en avant",
-        "{actor} et {receiver} essaient la position penchés en avant, appuyés sur le lit ou un meuble stable.",
-        4, duration=1, position=POSITION_PENCHE_AVANT,
-    ),
-    _activity(
-        "intense_position_debout", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Position : debout",
-        "{actor} et {receiver} passent à une position debout, contre un support stable.",
-        4, duration=1, position=POSITION_DEBOUT,
-    ),
-    _activity(
-        "intense_position_assis", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Position : assis",
-        "{actor} et {receiver} essaient une position assise, sur une chaise ou le bord du lit.",
-        4, duration=1, position=POSITION_ASSIS,
-    ),
-    _activity(
-        "intense_position_genoux", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Position : à genoux",
-        "{actor} et {receiver} passent à une position à genoux, au sol ou sur le lit.",
-        4, duration=1, position=POSITION_GENOUX,
     ),
 
     # ------------------------------------------------------------------
@@ -862,26 +799,28 @@ _RESTRAINT_LABELS = {"libre": None, "mobile": "mains liées", "fixe": "mains att
 # ci-dessus — le couple a explicitement demandé de multiplier au maximum les
 # combinaisons de positions. ``None`` = pas de position précisée (comme
 # avant l'ajout de cette dimension). {receiver} a toujours déjà été nommé·e
-# plus tôt dans la description à ce stade : on utilise {receiver_ref} (un
-# pronom pour un couple hétérosexuel, sinon le prénom répété) plutôt que de
-# le/la renommer une deuxième fois, et {receiver_e} pour accorder l'adjectif
-# au féminin le cas échéant (plutôt que la notation "(e)").
+# plus tôt dans la description à ce stade : on utilise {receiver_ref_cap}
+# (un pronom pour un couple hétérosexuel, sinon le prénom répété) plutôt que
+# de le/la renommer une deuxième fois — la variante "_cap" porte une
+# majuscule car ces clauses démarrent toujours une nouvelle phrase — et
+# {receiver_e} pour accorder l'adjectif au féminin le cas échéant (plutôt
+# que la notation "(e)").
 _CARESS_POSITIONS = [
     (None, None, None),
-    (POSITION_ALLONGE, "allongé", "{receiver_ref} est allongé{receiver_e}."),
-    (POSITION_QUATRE_PATTES, "à quatre pattes", "{receiver_ref} est à quatre pattes."),
+    (POSITION_ALLONGE, "allongé", "{receiver_ref_cap} est allongé{receiver_e}."),
+    (POSITION_QUATRE_PATTES, "à quatre pattes", "{receiver_ref_cap} est à quatre pattes."),
     (
         POSITION_PENCHE_AVANT,
         "penché",
-        "{receiver_ref} est penché{receiver_e} en avant, appuyé{receiver_e} sur un meuble ou un mur.",
+        "{receiver_ref_cap} est penché{receiver_e} en avant, appuyé{receiver_e} sur un meuble ou un mur.",
     ),
-    (POSITION_DEBOUT, "debout", "{receiver_ref} est debout."),
+    (POSITION_DEBOUT, "debout", "{receiver_ref_cap} est debout."),
     (
         POSITION_ASSIS,
         "assis",
-        "{receiver_ref} est assis{receiver_e}, sur une chaise ou le bord du lit.",
+        "{receiver_ref_cap} est assis{receiver_e}, sur une chaise ou le bord du lit.",
     ),
-    (POSITION_GENOUX, "à genoux", "{receiver_ref} est à genoux."),
+    (POSITION_GENOUX, "à genoux", "{receiver_ref_cap} est à genoux."),
 ]
 
 
@@ -1080,7 +1019,7 @@ def _generate_positioned_acts() -> list[dict]:
                 actor_stance = _stance_text(actor_pos, "{actor_e}")
                 receiver_stance = _stance_text(receiver_pos, "{receiver_e}")
                 stance_sentence = (
-                    f" {{actor_ref}} est {actor_stance}, {{receiver_ref}} est {receiver_stance}."
+                    f" {{actor_ref_cap}} est {actor_stance}, {{receiver_ref}} est {receiver_stance}."
                 )
                 for restraint in _RESTRAINTS:
                     intro = _restraint_intro(restraint, blindfold=False, position=receiver_pos)
@@ -1117,6 +1056,321 @@ def _generate_positioned_acts() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Intense, étape "early" (2 premiers tours, voir intense_stage dans
+# _activity() et DuoCoordinator._matches_intense_turn) : sexe oral, doigtage
+# intense et pénétration avec un jouet vibrant (vibromasseur, godemichet...),
+# déclinés selon la contrainte et le bandeau comme le reste du catalogue.
+# Chaque acte a deux gabarits : ``template_no_intro`` nomme {receiver} lui-
+# même (aucune intro liens/bandeau ne l'a fait avant), ``template_with_intro``
+# ne le/la re-nomme pas (déjà nommé·e par l'intro) — cette seconde version
+# évite tout pronom objet direct/indirect pour rester correcte quel que soit
+# le sexe (voir la mise en garde sur {actor_ref}/{receiver_ref} en objet).
+#
+# clé, catégorie, titre, gabarit sans intro, gabarit avec intro, sexe du/de
+# la receveur·se, accessoire, pénétration ?, sexe oral ?
+# ---------------------------------------------------------------------------
+_EARLY_INTENSE_ACTS = [
+    (
+        "oral", CATEGORY_INTENSITE_PLUS, "Stimulation orale intense",
+        "{actor} fait {oral_on_receiver} à {receiver}, avec plus d'intensité et d'insistance qu'en préliminaires.",
+        "{actor} passe à {oral_on_receiver}, avec plus d'intensité et d'insistance qu'en préliminaires.",
+        SEX_INDIFFERENT, None, False, True,
+    ),
+    (
+        "doigtage", CATEGORY_INTENSITE_PLUS, "Doigtage intense",
+        "{actor} pénètre {receiver} avec les doigts, avec un rythme plus soutenu et plus profond.",
+        "{actor} intensifie la pénétration digitale, avec un rythme plus soutenu et plus profond.",
+        SEX_FEMME, None, True, False,
+    ),
+    (
+        "jouet", CATEGORY_INTENSITE_PLUS, "Pénétration avec un jouet vibrant",
+        "{actor} pénètre {receiver} avec le jouet vibrant choisi (vibromasseur, godemichet...), en augmentant progressivement l'intensité.",
+        "{actor} insère le jouet vibrant choisi (vibromasseur, godemichet...) et augmente progressivement l'intensité.",
+        SEX_INDIFFERENT, _accessory_category("vibrant", required=True), True, False,
+    ),
+]
+
+
+def _generate_early_intense_acts() -> list[dict]:
+    """Actes intenses (sexe oral, doigtage, jouet vibrant) proposés aux 2
+    premiers tours de la phase Intense, déclinés selon la contrainte et le
+    bandeau — voir le commentaire au-dessus de _EARLY_INTENSE_ACTS."""
+    variants = []
+    for (
+        act_key, category, act_title,
+        template_no_intro, template_with_intro,
+        receiver_sex, accessory, penetration, is_oral,
+    ) in _EARLY_INTENSE_ACTS:
+        for restraint in _RESTRAINTS:
+            for blindfold in (False, True):
+                has_intro = restraint != "libre" or blindfold
+                intro = _restraint_intro(restraint, blindfold)
+                template = template_with_intro if has_intro else template_no_intro
+                description = intro + template
+
+                practices = []
+                if restraint != "libre":
+                    practices.append((PRACTICE_LIENS, "donne"))
+                if is_oral:
+                    practices.append((PRACTICE_ORAL, "donne"))
+                if accessory is not None:
+                    practices.append((PRACTICE_JOUETS, "usage"))
+
+                intensity = min(5, 4 + int(restraint != "libre") + int(blindfold))
+                duration = min(MAX_ACTIVITY_MINUTES, 2 + (1 if restraint != "libre" else 0))
+
+                title_suffix = [
+                    label
+                    for label in (
+                        _restraint_label(restraint, None),
+                        "yeux bandés" if blindfold else None,
+                    )
+                    if label
+                ]
+                title = act_title
+                if title_suffix:
+                    title += " (" + ", ".join(title_suffix) + ")"
+
+                variants.append(
+                    _activity(
+                        f"intense_early_{act_key}_{restraint}_"
+                        f"{'bandeau' if blindfold else 'sans'}",
+                        category,
+                        PHASE_INTENSE,
+                        title,
+                        description,
+                        intensity,
+                        duration=duration,
+                        accessory=accessory,
+                        practices=practices or None,
+                        penetration=penetration,
+                        receiver_sex=receiver_sex,
+                        intense_stage="early",
+                    )
+                )
+    return variants
+
+
+# ---------------------------------------------------------------------------
+# Intense, étape "late" (2 derniers tours) : positions nommées, réellement
+# empruntées au Kama Sutra ou au tantra plutôt que des libellés génériques
+# ("allongé", "à quatre pattes"...) — le couple a explicitement demandé leur
+# vrai nom et une explication de leur fonctionnement (mise en place, pas de
+# détail graphique). Le mélange volontaire d'``actor_sex``/``receiver_sex``
+# fait que certaines positions placent la femme au-dessus, meneuse du rythme
+# (Andromaque/Cavalière, Cow-girl inversée, Yab-Yum), d'autres la placent en
+# dessous ou penchée (Missionnaire, Levrette, l'Ancre, la variante penchée
+# sur un meuble) ; les Cuillères et la position debout contre un mur restent
+# indifférentes au sexe. Comme pour le reste du catalogue, {receiver} n'est
+# nommé·e qu'une fois : par l'intro liens/bandeau si elle existe (gabarit
+# ``template_with_intro``, qui le/la redésigne alors par pronom quand le
+# sexe est fixé par la position, ou l'omet quand il ne l'est pas), sinon par
+# le gabarit ``template_no_intro`` lui-même. La position de {receiver} est
+# enregistrée dans le champ ``position`` (voir le questionnaire de postures),
+# celle de {actor} reste descriptive.
+#
+# clé, titre, gabarit sans intro, gabarit avec intro, sexe actor, sexe
+# receiver, position de {receiver}.
+# ---------------------------------------------------------------------------
+_KAMASUTRA_POSITIONS = [
+    (
+        "missionnaire", "Missionnaire",
+        "{actor} s'installe au-dessus de {receiver}, allongée sur le dos, jambes autour de lui — la position du Missionnaire, la plus classique, pour se regarder dans les yeux pendant la pénétration.",
+        "{actor} s'installe au-dessus d'elle, jambes autour de lui — la position du Missionnaire, la plus classique, pour se regarder dans les yeux pendant la pénétration.",
+        SEX_HOMME, SEX_FEMME, POSITION_ALLONGE,
+    ),
+    (
+        "levrette", "Levrette",
+        "{receiver} est à quatre pattes pendant que {actor} la pénètre par-derrière — la Levrette, appréciée pour la profondeur de pénétration qu'elle permet.",
+        "toujours à quatre pattes, {actor} la pénètre par-derrière — la Levrette, appréciée pour la profondeur de pénétration qu'elle permet.",
+        SEX_HOMME, SEX_FEMME, POSITION_QUATRE_PATTES,
+    ),
+    (
+        "andromaque", "Andromaque (la Cavalière)",
+        "{receiver} est allongé sur le dos pendant que {actor} s'installe au-dessus de lui et mène le rythme — la position d'Andromaque, aussi appelée la Cavalière, où la femme garde le contrôle du mouvement.",
+        "toujours allongé sur le dos, {actor} s'installe au-dessus de lui et mène le rythme — la position d'Andromaque, aussi appelée la Cavalière, où la femme garde le contrôle du mouvement.",
+        SEX_FEMME, SEX_HOMME, POSITION_ALLONGE,
+    ),
+    (
+        "cowgirl_inversee", "Cow-girl inversée",
+        "{receiver} est allongé sur le dos pendant que {actor} s'installe au-dessus de lui, dos tourné vers son visage — la Cow-girl inversée, une variante de la Cavalière qui change le point de vue et les sensations.",
+        "toujours allongé sur le dos, {actor} s'installe au-dessus de lui, dos tourné vers son visage — la Cow-girl inversée, une variante de la Cavalière qui change le point de vue et les sensations.",
+        SEX_FEMME, SEX_HOMME, POSITION_ALLONGE,
+    ),
+    (
+        "yab_yum", "Yab-Yum",
+        "{receiver} s'assoit, {actor} vient s'installer sur ses genoux, face à face, jambes entrelacées — le Yab-Yum, emprunté au tantra, pour un rapprochement maximal des corps et des regards.",
+        "c'est {actor} qui vient s'installer sur ses genoux, face à face, jambes entrelacées — le Yab-Yum, emprunté au tantra, pour un rapprochement maximal des corps et des regards.",
+        SEX_FEMME, SEX_HOMME, POSITION_ASSIS,
+    ),
+    (
+        "cuilleres", "Cuillères",
+        "{actor} et {receiver} s'allongent sur le côté, blottis l'un contre l'autre, pour une pénétration tout en douceur par-derrière — la position des Cuillères, intime et peu fatigante.",
+        "{actor} vient se blottir dans son dos, allongé{actor_e} sur le côté, pour une pénétration tout en douceur par-derrière — la position des Cuillères, intime et peu fatigante.",
+        SEX_INDIFFERENT, SEX_INDIFFERENT, POSITION_ALLONGE,
+    ),
+    (
+        "debout_mur", "Debout contre un mur",
+        "{actor} plaque doucement {receiver} contre un mur, debout, pour une pénétration face à face — une position qui demande un peu d'équilibre mais rapproche les corps.",
+        "toujours contre le mur, {actor} entame une pénétration face à face — une position qui demande un peu d'équilibre mais rapproche les corps.",
+        SEX_INDIFFERENT, SEX_INDIFFERENT, POSITION_DEBOUT,
+    ),
+    (
+        "penche_meuble", "Penché·e sur un meuble",
+        "{receiver} se penche en avant, appuyée sur un meuble ou le rebord du lit, pendant que {actor} la pénètre par-derrière — une variante de la Levrette, très prisée pour l'angle de pénétration qu'elle offre.",
+        "toujours penchée en avant, appuyée sur un meuble, {actor} la pénètre par-derrière — une variante de la Levrette, très prisée pour l'angle de pénétration qu'elle offre.",
+        SEX_HOMME, SEX_FEMME, POSITION_PENCHE_AVANT,
+    ),
+    (
+        "ancre", "L'Ancre",
+        "{receiver} est allongée sur le dos et lève les jambes sur les épaules de {actor}, agenouillé face à elle — la position de l'Ancre, qui permet une pénétration plus profonde.",
+        "ses jambes reposent sur les épaules de {actor}, agenouillé face à elle — la position de l'Ancre, qui permet une pénétration plus profonde.",
+        SEX_HOMME, SEX_FEMME, POSITION_ALLONGE,
+    ),
+]
+
+
+def _generate_kamasutra_positions() -> list[dict]:
+    """Positions nommées proposées aux 2 derniers tours de la phase Intense,
+    déclinées selon la contrainte et le bandeau — voir le commentaire
+    au-dessus de _KAMASUTRA_POSITIONS. Reprend le mécanisme de contrainte
+    libre/mobile/fixe déjà utilisé ailleurs dans le catalogue (ex. Madame
+    allongée sur le dos et attachée à un point fixe, les yeux bandés ou
+    non, pour la position du Missionnaire ou de l'Ancre)."""
+    variants = []
+    for (
+        position_key, title, template_no_intro, template_with_intro,
+        actor_sex, receiver_sex, receiver_position,
+    ) in _KAMASUTRA_POSITIONS:
+        for restraint in _RESTRAINTS:
+            for blindfold in (False, True):
+                has_intro = restraint != "libre" or blindfold
+                intro = _restraint_intro(restraint, blindfold, receiver_position)
+                template = template_with_intro if has_intro else template_no_intro
+                description = intro + template
+
+                practices = []
+                if restraint != "libre":
+                    practices.append((PRACTICE_LIENS, "donne"))
+
+                intensity = min(5, 4 + int(restraint != "libre") + int(blindfold))
+                duration = min(MAX_ACTIVITY_MINUTES, 2 + (1 if restraint != "libre" else 0))
+
+                title_suffix = [
+                    label
+                    for label in (
+                        _restraint_label(restraint, receiver_position),
+                        "yeux bandés" if blindfold else None,
+                    )
+                    if label
+                ]
+                variant_title = title
+                if title_suffix:
+                    variant_title += " (" + ", ".join(title_suffix) + ")"
+
+                variants.append(
+                    _activity(
+                        f"intense_position_{position_key}_{restraint}_"
+                        f"{'bandeau' if blindfold else 'sans'}",
+                        CATEGORY_INTENSITE_PLUS,
+                        PHASE_INTENSE,
+                        variant_title,
+                        description,
+                        intensity,
+                        duration=duration,
+                        practices=practices or None,
+                        penetration=True,
+                        actor_sex=actor_sex,
+                        receiver_sex=receiver_sex,
+                        position=receiver_position,
+                        intense_stage="late",
+                    )
+                )
+    return variants
+
+
+# ---------------------------------------------------------------------------
+# Plaisir et variation autour des fesses en phase Intense, à une intensité
+# volontairement basse (1 à 3) — à distinguer de la fessée (voir plus bas,
+# intensité 4-5) : ici, seulement de la caresse, du baiser ou du pétrissage,
+# jamais de fessée. Sans intense_stage particulier : proposable à tout
+# moment de la phase, comme la fessée et les accessoires (voir
+# DuoCoordinator._matches_intense_turn).
+#
+# clé, titre, gabarit sans intro, gabarit avec intro (utilise "lui" — un COI
+# invariant en genre — plutôt que de re-nommer {receiver}), intensité de
+# base.
+# ---------------------------------------------------------------------------
+_INTENSE_FESSES_METHODS = [
+    (
+        "caresse", "Caresse des fesses",
+        "{actor} caresse longuement les fesses de {receiver}, un geste doux et sensuel.",
+        "{actor} lui caresse longuement les fesses, un geste doux et sensuel.",
+        1,
+    ),
+    (
+        "baiser", "Baisers sur les fesses",
+        "{actor} couvre les fesses de {receiver} de baisers, lentement.",
+        "{actor} lui couvre les fesses de baisers, lentement.",
+        2,
+    ),
+    (
+        "petrissage", "Pétrissage des fesses",
+        "{actor} pétrit doucement les fesses de {receiver}, entre massage et caresse appuyée.",
+        "{actor} lui pétrit doucement les fesses, entre massage et caresse appuyée.",
+        3,
+    ),
+]
+
+
+def _generate_intense_fesses_variants() -> list[dict]:
+    """Variantes basse intensité (1-3) autour des fesses, déclinées selon
+    la contrainte et le bandeau — voir le commentaire au-dessus de
+    _INTENSE_FESSES_METHODS."""
+    variants = []
+    for method_key, method_title, template_no_intro, template_with_intro, base_intensity in _INTENSE_FESSES_METHODS:
+        for restraint in _RESTRAINTS:
+            for blindfold in (False, True):
+                has_intro = restraint != "libre" or blindfold
+                intro = _restraint_intro(restraint, blindfold)
+                template = template_with_intro if has_intro else template_no_intro
+                description = intro + template
+
+                practices = []
+                if restraint != "libre":
+                    practices.append((PRACTICE_LIENS, "donne"))
+
+                intensity = min(3, base_intensity + int(restraint != "libre") + int(blindfold))
+
+                title_suffix = [
+                    label
+                    for label in (
+                        _restraint_label(restraint, None),
+                        "yeux bandés" if blindfold else None,
+                    )
+                    if label
+                ]
+                title = method_title
+                if title_suffix:
+                    title += " (" + ", ".join(title_suffix) + ")"
+
+                variants.append(
+                    _activity(
+                        f"intense_fesses_{method_key}_{restraint}_"
+                        f"{'bandeau' if blindfold else 'sans'}",
+                        CATEGORY_INTENSITE_PLUS,
+                        PHASE_INTENSE,
+                        title,
+                        description,
+                        intensity,
+                        duration=1,
+                        practices=practices or None,
+                    )
+                )
+    return variants
+
+
+# ---------------------------------------------------------------------------
 # Fessée légère déclinée selon la position de {receiver} (celle dans laquelle
 # iel la reçoit — voir le questionnaire de postures) et la contrainte, comme
 # demandé explicitement (ex. une fessée à quatre pattes).
@@ -1135,7 +1389,7 @@ def _generate_fessee_variants() -> list[dict]:
         for restraint in ("libre", "mobile"):
             intro = _restraint_intro(restraint, blindfold=False)
             stance = _stance_text(position, "{receiver_e}")
-            description = f"{intro}{_FESSEE_ACTION} {{receiver_ref}} est {stance}."
+            description = f"{intro}{_FESSEE_ACTION} {{receiver_ref_cap}} est {stance}."
 
             practices = [(PRACTICE_DISCIPLINE, "donne")]
             if restraint != "libre":
@@ -1168,6 +1422,9 @@ def _generate_fessee_variants() -> list[dict]:
 ACTIVITIES += (
     _generate_caress_variants()
     + _generate_positioned_acts()
+    + _generate_early_intense_acts()
+    + _generate_kamasutra_positions()
+    + _generate_intense_fesses_variants()
     + _generate_fessee_variants()
 )
 

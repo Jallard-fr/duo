@@ -70,6 +70,7 @@ ACCESSORY_CATALOG = [
     _item("satisfyer", "Satisfyer", ACCESSORY_CATEGORY_VIBRANT, receiver_sex=SEX_FEMME),
     _item("mini_vibro", "Mini-vibro discret", ACCESSORY_CATEGORY_VIBRANT, receiver_sex=SEX_FEMME),
     _item("masseur_couple", "Masseur pour couple", ACCESSORY_CATEGORY_VIBRANT, receiver_sex=SEX_FEMME),
+    _item("godemichet", "Godemichet", ACCESSORY_CATEGORY_VIBRANT, receiver_sex=SEX_FEMME),
     # Anneau vibrant : porté par l'acteur homme, bénéficie aux deux partenaires.
     _item("bague_vibrante", "Bague vibrante", ACCESSORY_CATEGORY_VIBRANT, actor_sex=SEX_HOMME),
 

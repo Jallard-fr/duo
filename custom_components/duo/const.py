@@ -205,14 +205,25 @@ POSITION_LABELS = {
 #   que de piocher n'importe quelle intensité dès le début.
 # Voir DuoCoordinator._matches_preliminaires_turn et
 # DuoCoordinator._preliminaires_penetration_done.
+#
+# La phase Intense compte 4 tours, par acteur, répartis en deux étapes (voir
+# le champ ``intense_stage`` dans activities.py et
+# DuoCoordinator._matches_intense_turn) :
+# - "early" (tours 1 et 2) : sexe oral, doigtage intense, pénétration avec
+#   un jouet vibrant (vibromasseur, godemichet...) ;
+# - "late" (tours 3 et 4) : positions nommées (Kama Sutra...).
+# Les activités sans ``intense_stage`` (fessée, etc.) restent proposables à
+# tout moment de la phase.
 # ---------------------------------------------------------------------------
 MAX_ACTIVITY_MINUTES = 3
 LEVEL_TARGET_COUNT = 3
 MAX_REROLLS = 4
 
 PRELIMINAIRES_TARGET_COUNT = 5
+INTENSE_TARGET_COUNT = 4
 PHASE_TARGET_COUNTS = {
     PHASE_PRELIMINAIRES: PRELIMINAIRES_TARGET_COUNT,
+    PHASE_INTENSE: INTENSE_TARGET_COUNT,
 }
 
 # {tour: (intensité min, intensité max)}, en cœurs (1 à 5).

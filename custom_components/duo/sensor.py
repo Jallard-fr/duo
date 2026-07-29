@@ -52,7 +52,9 @@ def _second_mention(name: str, sex: str | None, other_sex: str | None) -> str:
     """Pour éviter de répéter le prénom d'un même partenaire plusieurs fois
     dans une activité : un pronom (il/elle) à la deuxième mention si le
     couple est hétérosexuel, sinon le prénom est répété (un pronom serait
-    ambigu entre deux partenaires de même sexe)."""
+    ambigu entre deux partenaires de même sexe). Pour une mention en milieu
+    de phrase — voir ``_second_mention_cap`` pour la variante en début de
+    phrase, qui doit porter une majuscule."""
     if not sex or not other_sex or sex == other_sex:
         return name
     if sex == SEX_HOMME:
@@ -60,6 +62,17 @@ def _second_mention(name: str, sex: str | None, other_sex: str | None) -> str:
     if sex == SEX_FEMME:
         return "elle"
     return name
+
+
+def _second_mention_cap(name: str, sex: str | None, other_sex: str | None) -> str:
+    """Variante de ``_second_mention`` pour une mention qui démarre une
+    nouvelle phrase (« Il est... », « Elle est... ») : le pronom porte alors
+    une majuscule, contrairement au prénom répété (déjà capitalisé) qui
+    reste inchangé."""
+    mention = _second_mention(name, sex, other_sex)
+    if mention in ("il", "elle"):
+        return mention.capitalize()
+    return mention
 
 
 async def async_setup_entry(
@@ -165,6 +178,8 @@ class DuoSuggestionSensor(DuoEntityBase):
                 receiver=receiver,
                 actor_ref=_second_mention(actor, actor_sex, receiver_sex),
                 receiver_ref=_second_mention(receiver, receiver_sex, actor_sex),
+                actor_ref_cap=_second_mention_cap(actor, actor_sex, receiver_sex),
+                receiver_ref_cap=_second_mention_cap(receiver, receiver_sex, actor_sex),
                 actor_e=_gender_suffix(actor_sex),
                 receiver_e=_gender_suffix(receiver_sex),
                 oral_on_receiver=_oral_label(receiver_sex),

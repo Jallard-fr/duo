@@ -49,6 +49,7 @@ from .const import (
     NEW_IDEA_UNKNOWN,
     NEW_IDEA_UNKNOWN_LABEL,
     PHASE_EXCITATION,
+    PHASE_INTENSE,
     PHASE_PRELIMINAIRES,
     PHASE_TARGET_COUNTS,
     PRELIMINAIRES_INTENSITY_RANGE,
@@ -812,6 +813,29 @@ class DuoCoordinator:
             return False
         return True
 
+    def _matches_intense_turn(self, activity: dict, actor: str) -> bool:
+        """Phase Intense uniquement, et seulement tant qu'elle est la phase
+        guidée en cours : les activités marquées ``intense_stage="early"``
+        (sexe oral, doigtage intense, jouet vibrant) ne sont proposées
+        qu'aux 2 premiers tours, celles marquées ``"late"`` (positions
+        nommées) qu'aux 2 derniers, sur INTENSE_TARGET_COUNT tours au total.
+        Une activité sans ``intense_stage`` n'est pas concernée par cette
+        règle."""
+        stage = activity.get("intense_stage")
+        if (
+            not stage
+            or activity.get("phase") != PHASE_INTENSE
+            or self.session_phase != PHASE_INTENSE
+        ):
+            return True
+        target = self._target_count_for(PHASE_INTENSE)
+        round_number = self.phase_progress.get(actor, 0) + 1
+        if stage == "early":
+            return round_number <= target - 2
+        if stage == "late":
+            return round_number > target - 2
+        return True
+
     async def async_request_suggestion(
         self,
         turn: str | None = None,
@@ -857,6 +881,7 @@ class DuoCoordinator:
                 and self._matches_position_limits(activity, proposer)
                 and self._matches_lingerie_state(activity, turn)
                 and self._matches_preliminaires_turn(activity, turn)
+                and self._matches_intense_turn(activity, turn)
                 and (self._matches_phase(activity, effective_phase) if with_phase else True)
             )
 
