@@ -36,9 +36,13 @@ const QUIZ_CHOICES = [
 
 // Questionnaire de limites : questions fermées et explicites, groupées par
 // pratique (voir PRACTICE_* dans const.py). "donne"/"recoit" distingue le
-// rôle actif du rôle passif ; "usage" (jouets) est symétrique. Le libellé
-// de la stimulation orale s'adapte au sexe concerné (fellation/cunnilingus)
-// quand il est connu, sinon reste générique.
+// rôle actif du rôle passif ; "usage" (jouets) est symétrique. Chaque
+// question nomme le prénom réel du partenaire plutôt que le générique
+// "ton/ta partenaire" (qui obligeait à deviner l'accord de "ton"/"ta"). Le
+// libellé de la stimulation orale s'adapte en plus au sexe concerné
+// (fellation/cunnilingus) quand il est connu, sinon reste générique — une
+// personne dont le/la partenaire est une femme se voit ainsi proposer la
+// question sur le cunnilingus, jamais sur la fellation.
 function oralLabel(sex) {
   if (sex === "Homme") return "une fellation";
   if (sex === "Femme") return "un cunnilingus";
@@ -52,11 +56,11 @@ const PRACTICE_GROUPS = [
     questions: [
       {
         role: "donne",
-        text: (mySex, otherSex) => `Acceptes-tu de faire ${oralLabel(otherSex)} à ton/ta partenaire ?`,
+        text: (mySex, otherSex, otherName) => `Acceptes-tu de faire ${oralLabel(otherSex)} à ${otherName} ?`,
       },
       {
         role: "recoit",
-        text: (mySex) => `Acceptes-tu que ton/ta partenaire te fasse ${oralLabel(mySex)} ?`,
+        text: (mySex, otherSex, otherName) => `Acceptes-tu que ${otherName} te fasse ${oralLabel(mySex)} ?`,
       },
     ],
   },
@@ -64,31 +68,52 @@ const PRACTICE_GROUPS = [
     key: "anal",
     label: "Pénétration anale (sodomie)",
     questions: [
-      { role: "donne", text: () => "Acceptes-tu de pratiquer une pénétration anale sur ton/ta partenaire ?" },
-      { role: "recoit", text: () => "Acceptes-tu de recevoir une pénétration anale ?" },
+      {
+        role: "donne",
+        text: (mySex, otherSex, otherName) => `Acceptes-tu de pratiquer une pénétration anale sur ${otherName} ?`,
+      },
+      {
+        role: "recoit",
+        text: (mySex, otherSex, otherName) => `Acceptes-tu de recevoir une pénétration anale de la part de ${otherName} ?`,
+      },
     ],
   },
   {
     key: "discipline",
     label: "Discipline légère (fessée, fouet léger)",
     questions: [
-      { role: "donne", text: () => "Acceptes-tu d'appliquer une discipline légère à ton/ta partenaire ?" },
-      { role: "recoit", text: () => "Acceptes-tu de la recevoir ?" },
+      {
+        role: "donne",
+        text: (mySex, otherSex, otherName) => `Acceptes-tu d'appliquer une discipline légère à ${otherName} ?`,
+      },
+      {
+        role: "recoit",
+        text: (mySex, otherSex, otherName) => `Acceptes-tu de la recevoir de la part de ${otherName} ?`,
+      },
     ],
   },
   {
     key: "liens",
     label: "Contrainte douce / liens",
     questions: [
-      { role: "donne", text: () => "Acceptes-tu d'attacher ton/ta partenaire avec des liens doux ?" },
-      { role: "recoit", text: () => "Acceptes-tu d'être attaché(e) ?" },
+      {
+        role: "donne",
+        text: (mySex, otherSex, otherName) => `Acceptes-tu d'attacher ${otherName} avec des liens doux ?`,
+      },
+      {
+        role: "recoit",
+        text: (mySex, otherSex, otherName) => `Acceptes-tu d'être attaché(e) par ${otherName} ?`,
+      },
     ],
   },
   {
     key: "jouets",
     label: "Jouets vibrants",
     questions: [
-      { role: "usage", text: () => "Acceptes-tu l'utilisation de jouets/accessoires vibrants à deux ?" },
+      {
+        role: "usage",
+        text: (mySex, otherSex, otherName) => `Acceptes-tu l'utilisation de jouets/accessoires vibrants à deux avec ${otherName} ?`,
+      },
     ],
   },
 ];
@@ -656,7 +681,7 @@ class DuoCard extends HTMLElement {
     const cfg = this._config;
     const sexes = this._partnerSexes();
     const otherPartner = quiz.partner === cfg.partner1 ? cfg.partner2 : cfg.partner1;
-    const questionText = step.text(sexes[quiz.partner], sexes[otherPartner]);
+    const questionText = step.text(sexes[quiz.partner], sexes[otherPartner], otherPartner);
 
     return `
       <div class="draft">
@@ -681,12 +706,14 @@ class DuoCard extends HTMLElement {
     const step = POSITION_QUESTIONS[quiz.stepIndex];
     if (!step) return "";
     const [, label, phrase] = step;
+    const cfg = this._config;
+    const otherPartner = quiz.partner === cfg.partner1 ? cfg.partner2 : cfg.partner1;
 
     return `
       <div class="draft">
         <h4>Postures de ${esc(quiz.partner)} — ${quiz.stepIndex + 1}/${POSITION_QUESTIONS.length}</h4>
         <div class="note"><strong>${esc(label)}</strong></div>
-        <div class="note">Acceptes-tu de recevoir quelque chose (une caresse, une fessée...) ${esc(phrase)} ?</div>
+        <div class="note">Acceptes-tu de recevoir quelque chose (une caresse, une fessée...) de la part de ${esc(otherPartner)}, ${esc(phrase)} ?</div>
         <div class="chips">
           ${PRACTICE_ANSWER_CHOICES.map(
             ([value, choiceLabel]) =>
