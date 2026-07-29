@@ -1081,6 +1081,10 @@ class DuoCard extends HTMLElement {
         .suggestion-name { font-size: 1.1em; font-weight: 700; margin-bottom: 4px; }
         .suggestion-desc { opacity: 0.85; margin-bottom: 8px; }
         .meta { font-size: 0.85em; opacity: 0.7; margin-bottom: 8px; }
+        .turn-hint {
+          font-size: 0.9em; font-weight: 600; margin-bottom: 8px;
+          color: var(--primary-color, #e91e63);
+        }
         .actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .progress-outer {
           background: var(--divider-color, #ddd); border-radius: 6px; height: 10px; overflow: hidden; margin: 8px 0;
@@ -1159,6 +1163,11 @@ class DuoCard extends HTMLElement {
                 }
                 · Statut : ${esc(status)}
               </div>
+              ${
+                status === "proposed" && suggestion.attributes.turn
+                  ? `<div class="turn-hint">👉 C'est à <strong>${esc(suggestion.attributes.turn)}</strong> de décider — passez-vous l'appareil si vous n'utilisez qu'un seul téléphone.</div>`
+                  : ""
+              }
               <div class="actions">
                 ${
                   status === "proposed"

@@ -132,6 +132,11 @@ class DuoCoordinator:
         # pénétration (voir _matches_preliminaires_turn et
         # async_request_suggestion).
         self._preliminaires_penetration_done: dict[str, bool] = {}
+        # {phase: {receveur·se déjà servi·e}} — la fellation et le
+        # cunnilingus ne sont proposés qu'une seule fois par receveur·se sur
+        # les phases Préliminaires et Intense (voir _matches_oral_cap et
+        # _register_oral_cap), pas à chaque tour.
+        self._oral_done_by_phase: dict[str, set[str]] = {}
 
     @property
     def partners(self) -> list[str]:
@@ -635,6 +640,7 @@ class DuoCoordinator:
         self.session_phase = PHASE_EXCITATION
         self.phase_progress = {}
         self._preliminaires_penetration_done = {}
+        self._oral_done_by_phase = {}
         await self.async_reset_session()
         _LOGGER.debug("Duo : humeurs réinitialisées (minuit)")
 
@@ -836,6 +842,15 @@ class DuoCoordinator:
             return round_number > target - 2
         return True
 
+    def _matches_oral_cap(self, activity: dict, receiver: str) -> bool:
+        """La fellation et le cunnilingus ne sont proposés qu'une seule fois
+        par receveur·se sur les phases Préliminaires et Intense, pas à
+        chaque tour (voir _register_oral_cap, appelé à l'acceptation)."""
+        phase = activity.get("phase")
+        if phase not in (PHASE_PRELIMINAIRES, PHASE_INTENSE) or not self._activity_is_oral(activity):
+            return True
+        return receiver not in self._oral_done_by_phase.get(phase, set())
+
     async def async_request_suggestion(
         self,
         turn: str | None = None,
@@ -882,6 +897,7 @@ class DuoCoordinator:
                 and self._matches_lingerie_state(activity, turn)
                 and self._matches_preliminaires_turn(activity, turn)
                 and self._matches_intense_turn(activity, turn)
+                and self._matches_oral_cap(activity, proposer)
                 and (self._matches_phase(activity, effective_phase) if with_phase else True)
             )
 
@@ -926,6 +942,7 @@ class DuoCoordinator:
             await self._async_log_history(activity, response)
             self._reroll_count = 0
             self._async_register_level_progress(activity)
+            self._register_oral_cap(activity)
             await self.async_start_timer()
         else:
             self.current_status = STATUS_DECLINED
@@ -959,6 +976,17 @@ class DuoCoordinator:
         target = self._target_count_for(self.session_phase)
         if all(self.phase_progress.get(p, 0) >= target for p in self.partners):
             self._advance_session_phase()
+
+    def _register_oral_cap(self, activity: dict) -> None:
+        """Marque le/la receveur·se comme déjà servi·e pour la phase de
+        cette activité, si elle est orale (voir _matches_oral_cap) —
+        indépendamment de la phase guidée en cours, contrairement à
+        _async_register_level_progress."""
+        phase = activity.get("phase")
+        if phase not in (PHASE_PRELIMINAIRES, PHASE_INTENSE) or not self._activity_is_oral(activity):
+            return
+        receiver = self.other_partner(self.current_turn)
+        self._oral_done_by_phase.setdefault(phase, set()).add(receiver)
 
     def _advance_session_phase(self) -> None:
         try:
@@ -1071,6 +1099,7 @@ class DuoCoordinator:
             self.profile["practice_limits"][partner] = {}
         self.session_phase = PHASE_EXCITATION
         self.phase_progress = {}
+        self._oral_done_by_phase = {}
         await self.async_save()
         await self.async_reset_session()
 

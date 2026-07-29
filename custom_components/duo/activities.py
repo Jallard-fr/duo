@@ -529,12 +529,6 @@ ACTIVITIES = [
         accessory=_accessory_id("plume", required=False),
     ),
     _activity(
-        "preliminaires_cuir_chevelu", CATEGORY_MASSAGE, PHASE_PRELIMINAIRES,
-        "Caresses dans les cheveux",
-        "{actor} caresse et masse doucement le cuir chevelu de {receiver}, en jouant avec ses cheveux.",
-        1, count=(20, "caresses"),
-    ),
-    _activity(
         "preliminaires_vagues_de_plaisir", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
         "Vagues de plaisir",
         "{actor} alterne, avec {receiver}, des moments de stimulation plus intense et des pauses plus douces, pour faire durer l'envie avant d'aller plus loin.",
@@ -657,55 +651,29 @@ ACTIVITIES = [
         accessory=_accessory_id("foulards", required=False),
     ),
 
-    # ------------------------------------------------------------------
-    # Phase 3 — Intense : actions avec pénétration intense.
-    # ------------------------------------------------------------------
     _activity(
-        "intense_accessoire_vibrant", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Accessoire à deux",
-        "{actor} et {receiver} intègrent ensemble l'accessoire vibrant qu'ils possèdent, au rythme et à l'intensité qui leur conviennent.",
-        5, duration=3,
-        accessory=_accessory_category("vibrant", required=False),
-        practice=PRACTICE_JOUETS,
-    ),
-    _activity(
-        "intense_discipline_legere", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Fessée légère",
-        "{actor} donne une fessée légère à {receiver}, à la main ou avec l'accessoire choisi, à l'intensité validée ensemble avant de commencer.",
-        4, duration=1,
-        accessory=_accessory_id("fouet_leger", required=False),
-        practice=PRACTICE_DISCIPLINE,
-    ),
-    _activity(
-        "intense_liens_du_soir", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Liens du soir",
-        "{actor} utilise des liens doux pour immobiliser gentiment {receiver}, avec un mot d'arrêt clair et respecté par les deux.",
-        4, duration=2,
-        accessory=_accessory_id("menottes_douces", required=False),
-        practice=PRACTICE_LIENS,
-    ),
-    _activity(
-        "intense_gel_chauffant", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Chaleur qui monte",
-        "{actor} applique le gel chauffant choisi sur {receiver} et laisse la sensation s'installer avant de continuer.",
-        3, duration=1,
-        accessory=_accessory_id("gel_chauffant", required=False),
-    ),
-    _activity(
-        "intense_confort_lubrifiant", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
+        "preliminaires_confort_lubrifiant", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
         "Confort avant tout",
         "{actor} et {receiver} prennent un instant pour appliquer du lubrifiant si besoin : le confort d'abord.",
         1, duration=1,
         accessory=_accessory_id("lubrifiant", required=False),
     ),
     _activity(
-        "intense_protection", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
+        "preliminaires_protection", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
         "Protection avant tout",
         "{actor} et {receiver} prennent un instant, ensemble, pour la protection si besoin.",
         1, duration=1,
         accessory=_accessory_id("preservatifs", required=False),
         actor_sex=SEX_HOMME,
     ),
+
+    # ------------------------------------------------------------------
+    # Phase 3 — Intense : uniquement des positions avec pénétration, une
+    # pénétration avec un jouet vibrant, ou du sexe oral en tout début de
+    # phase — le couple a explicitement demandé de purifier cette phase à
+    # ces 3 catégories, en retirant tout ce qui n'est ni pénétratif ni oral
+    # (accessoire non pénétratif, fessée, liens seuls, gel chauffant...).
+    # ------------------------------------------------------------------
 
     # ------------------------------------------------------------------
     # Phase 4 — Résolution : retour au calme, tendresse après le rapport.
@@ -770,7 +738,6 @@ _CARESS_ZONES = [
     ("cuisses", "l'intérieur des cuisses", "l'intérieur de ses cuisses", "Intérieur des cuisses"),
     ("ventre", "le ventre et le nombril", "son ventre et son nombril", "Ventre"),
     ("genoux", "le creux des genoux", "le creux de ses genoux", "Creux des genoux"),
-    ("cuir_chevelu", "le cuir chevelu", "son cuir chevelu", "Cuir chevelu"),
     ("levres", "les lèvres et le visage", "ses lèvres et son visage", "Lèvres et visage"),
     ("fesses", "les fesses", "ses fesses", "Fesses"),
     ("mains", "les mains et les poignets", "ses mains et ses poignets", "Mains et poignets"),
@@ -866,9 +833,6 @@ def _generate_caress_variants() -> list[dict]:
     variants = []
     for zone_key, zone_article, zone_possessive, zone_title in _CARESS_ZONES:
         for method_key, category, method_title, verb, trailing, base_intensity, base_duration in _CARESS_METHODS:
-            # On ne mordille pas le cuir chevelu / les cheveux.
-            if zone_key == "cuir_chevelu" and method_key == "mordille":
-                continue
             for restraint in _RESTRAINTS:
                 for blindfold in (False, True):
                     # {receiver} n'est nommé·e qu'une fois : par l'intro liens/
@@ -1057,14 +1021,18 @@ def _generate_positioned_acts() -> list[dict]:
 
 # ---------------------------------------------------------------------------
 # Intense, étape "early" (2 premiers tours, voir intense_stage dans
-# _activity() et DuoCoordinator._matches_intense_turn) : sexe oral, doigtage
-# intense et pénétration avec un jouet vibrant (vibromasseur, godemichet...),
-# déclinés selon la contrainte et le bandeau comme le reste du catalogue.
-# Chaque acte a deux gabarits : ``template_no_intro`` nomme {receiver} lui-
-# même (aucune intro liens/bandeau ne l'a fait avant), ``template_with_intro``
-# ne le/la re-nomme pas (déjà nommé·e par l'intro) — cette seconde version
-# évite tout pronom objet direct/indirect pour rester correcte quel que soit
-# le sexe (voir la mise en garde sur {actor_ref}/{receiver_ref} en objet).
+# _activity() et DuoCoordinator._matches_intense_turn) : uniquement du sexe
+# oral et de la pénétration avec un jouet vibrant (vibromasseur,
+# godemichet...) — la phase Intense est volontairement limitée à ces deux
+# catégories plus les positions nommées (voir _generate_kamasutra_positions),
+# à l'exclusion de tout le reste (pas de doigtage seul, pas de caresse
+# légère, pas de fessée ou de liens sans pénétration). Déclinés selon la
+# contrainte et le bandeau comme le reste du catalogue. Chaque acte a deux
+# gabarits : ``template_no_intro`` nomme {receiver} lui-même (aucune intro
+# liens/bandeau ne l'a fait avant), ``template_with_intro`` ne le/la
+# re-nomme pas (déjà nommé·e par l'intro) — cette seconde version évite tout
+# pronom objet direct/indirect pour rester correcte quel que soit le sexe
+# (voir la mise en garde sur {actor_ref}/{receiver_ref} en objet).
 #
 # clé, catégorie, titre, gabarit sans intro, gabarit avec intro, sexe du/de
 # la receveur·se, accessoire, pénétration ?, sexe oral ?
@@ -1075,12 +1043,6 @@ _EARLY_INTENSE_ACTS = [
         "{actor} fait {oral_on_receiver} à {receiver}, avec plus d'intensité et d'insistance qu'en préliminaires.",
         "{actor} passe à {oral_on_receiver}, avec plus d'intensité et d'insistance qu'en préliminaires.",
         SEX_INDIFFERENT, None, False, True,
-    ),
-    (
-        "doigtage", CATEGORY_INTENSITE_PLUS, "Doigtage intense",
-        "{actor} pénètre {receiver} avec les doigts, avec un rythme plus soutenu et plus profond.",
-        "{actor} intensifie la pénétration digitale, avec un rythme plus soutenu et plus profond.",
-        SEX_FEMME, None, True, False,
     ),
     (
         "jouet", CATEGORY_INTENSITE_PLUS, "Pénétration avec un jouet vibrant",
@@ -1289,143 +1251,11 @@ def _generate_kamasutra_positions() -> list[dict]:
     return variants
 
 
-# ---------------------------------------------------------------------------
-# Plaisir et variation autour des fesses en phase Intense, à une intensité
-# volontairement basse (1 à 3) — à distinguer de la fessée (voir plus bas,
-# intensité 4-5) : ici, seulement de la caresse, du baiser ou du pétrissage,
-# jamais de fessée. Sans intense_stage particulier : proposable à tout
-# moment de la phase, comme la fessée et les accessoires (voir
-# DuoCoordinator._matches_intense_turn).
-#
-# clé, titre, gabarit sans intro, gabarit avec intro (utilise "lui" — un COI
-# invariant en genre — plutôt que de re-nommer {receiver}), intensité de
-# base.
-# ---------------------------------------------------------------------------
-_INTENSE_FESSES_METHODS = [
-    (
-        "caresse", "Caresse des fesses",
-        "{actor} caresse longuement les fesses de {receiver}, un geste doux et sensuel.",
-        "{actor} lui caresse longuement les fesses, un geste doux et sensuel.",
-        1,
-    ),
-    (
-        "baiser", "Baisers sur les fesses",
-        "{actor} couvre les fesses de {receiver} de baisers, lentement.",
-        "{actor} lui couvre les fesses de baisers, lentement.",
-        2,
-    ),
-    (
-        "petrissage", "Pétrissage des fesses",
-        "{actor} pétrit doucement les fesses de {receiver}, entre massage et caresse appuyée.",
-        "{actor} lui pétrit doucement les fesses, entre massage et caresse appuyée.",
-        3,
-    ),
-]
-
-
-def _generate_intense_fesses_variants() -> list[dict]:
-    """Variantes basse intensité (1-3) autour des fesses, déclinées selon
-    la contrainte et le bandeau — voir le commentaire au-dessus de
-    _INTENSE_FESSES_METHODS."""
-    variants = []
-    for method_key, method_title, template_no_intro, template_with_intro, base_intensity in _INTENSE_FESSES_METHODS:
-        for restraint in _RESTRAINTS:
-            for blindfold in (False, True):
-                has_intro = restraint != "libre" or blindfold
-                intro = _restraint_intro(restraint, blindfold)
-                template = template_with_intro if has_intro else template_no_intro
-                description = intro + template
-
-                practices = []
-                if restraint != "libre":
-                    practices.append((PRACTICE_LIENS, "donne"))
-
-                intensity = min(3, base_intensity + int(restraint != "libre") + int(blindfold))
-
-                title_suffix = [
-                    label
-                    for label in (
-                        _restraint_label(restraint, None),
-                        "yeux bandés" if blindfold else None,
-                    )
-                    if label
-                ]
-                title = method_title
-                if title_suffix:
-                    title += " (" + ", ".join(title_suffix) + ")"
-
-                variants.append(
-                    _activity(
-                        f"intense_fesses_{method_key}_{restraint}_"
-                        f"{'bandeau' if blindfold else 'sans'}",
-                        CATEGORY_INTENSITE_PLUS,
-                        PHASE_INTENSE,
-                        title,
-                        description,
-                        intensity,
-                        duration=1,
-                        practices=practices or None,
-                    )
-                )
-    return variants
-
-
-# ---------------------------------------------------------------------------
-# Fessée légère déclinée selon la position de {receiver} (celle dans laquelle
-# iel la reçoit — voir le questionnaire de postures) et la contrainte, comme
-# demandé explicitement (ex. une fessée à quatre pattes).
-# ---------------------------------------------------------------------------
-
-_FESSEE_ACTION = "{actor} donne une fessée légère à {receiver}, à l'intensité validée ensemble avant de commencer."
-
-
-def _generate_fessee_variants() -> list[dict]:
-    variants = []
-    for position in _POSITIONS_LIST:
-        # Assis·e, les fesses reposent sur le siège : pas de fessée possible
-        # dans cette position (même raison que pour les caresses).
-        if position == POSITION_ASSIS:
-            continue
-        for restraint in ("libre", "mobile"):
-            intro = _restraint_intro(restraint, blindfold=False)
-            stance = _stance_text(position, "{receiver_e}")
-            description = f"{intro}{_FESSEE_ACTION} {{receiver_ref_cap}} est {stance}."
-
-            practices = [(PRACTICE_DISCIPLINE, "donne")]
-            if restraint != "libre":
-                practices.append((PRACTICE_LIENS, "donne"))
-
-            accessory = _restraint_accessory(restraint) or _accessory_id("fouet_leger", required=False)
-
-            title = f"Fessée légère ({_POSITION_TITLES[position]}"
-            if restraint != "libre":
-                title += ", " + _RESTRAINT_LABELS[restraint]
-            title += ")"
-
-            variants.append(
-                _activity(
-                    f"fessee_{position}_{restraint}",
-                    CATEGORY_INTENSITE_PLUS,
-                    PHASE_INTENSE,
-                    title,
-                    description,
-                    4,
-                    duration=1,
-                    accessory=accessory,
-                    practices=practices,
-                    position=position,
-                )
-            )
-    return variants
-
-
 ACTIVITIES += (
     _generate_caress_variants()
     + _generate_positioned_acts()
     + _generate_early_intense_acts()
     + _generate_kamasutra_positions()
-    + _generate_intense_fesses_variants()
-    + _generate_fessee_variants()
 )
 
 
