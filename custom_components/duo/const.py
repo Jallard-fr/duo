@@ -183,14 +183,36 @@ POSITION_LABELS = {
 # Progression guidée par niveau (= phase) : santé et plaisir avant tout, donc
 # des activités volontairement courtes (3 minutes maximum, ou quantifiées en
 # nombre d'actions plutôt qu'en temps) plutôt qu'une seule longue séquence.
-# Chaque partenaire doit accepter LEVEL_TARGET_COUNT activités de la phase en
-# cours avant qu'elle ne passe automatiquement à la suivante. En cas de refus,
-# une nouvelle proposition est faite automatiquement, jusqu'à MAX_REROLLS
-# fois avant de laisser la main au couple.
+# Chaque partenaire doit accepter un nombre donné d'activités de la phase en
+# cours avant qu'elle ne passe automatiquement à la suivante (voir
+# PHASE_TARGET_COUNTS ; LEVEL_TARGET_COUNT reste la valeur par défaut pour
+# les phases non listées). En cas de refus, une nouvelle proposition est
+# faite automatiquement, jusqu'à MAX_REROLLS fois avant de laisser la main
+# au couple.
+#
+# La phase Préliminaires compte volontairement plus de tours (5, contre 3
+# ailleurs) car deux règles de progression s'y appliquent, par acteur :
+# - la pénétration (doigtage, jouet...) n'est proposée qu'aux 2 derniers
+#   tours (4 et 5), et est garantie sur au moins l'un des deux ;
+# - le sexe oral n'est proposé qu'à partir du 3e tour.
+# Voir DuoCoordinator._matches_preliminaires_turn et
+# DuoCoordinator._preliminaires_penetration_done.
 # ---------------------------------------------------------------------------
 MAX_ACTIVITY_MINUTES = 3
 LEVEL_TARGET_COUNT = 3
 MAX_REROLLS = 4
+
+PRELIMINAIRES_TARGET_COUNT = 5
+PHASE_TARGET_COUNTS = {
+    PHASE_PRELIMINAIRES: PRELIMINAIRES_TARGET_COUNT,
+}
+
+# Bornes du tirage aléatoire pour toute activité quantifiée en nombre
+# d'actions ("count") plutôt qu'en temps : le nombre affiché est retiré à
+# chaque nouvelle proposition, entre ces deux bornes, plutôt que fixé une
+# fois pour toutes dans le catalogue (voir DuoCoordinator.current_count).
+COUNT_MIN = 5
+COUNT_MAX = 15
 
 MOOD_NOT_TONIGHT = "pas_ce_soir"
 MOOD_TENDERNESS = "douceur"

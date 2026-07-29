@@ -31,6 +31,8 @@ from .const import (
     CONF_PARTNER2_SEX,
     CONF_PERSON1,
     CONF_PERSON2,
+    COUNT_MAX,
+    COUNT_MIN,
     DECLINE_COOLDOWN_DAYS,
     DEFAULT_PROFILE,
     LEVEL_TARGET_COUNT,
@@ -44,10 +46,13 @@ from .const import (
     NEW_IDEA_UNKNOWN,
     NEW_IDEA_UNKNOWN_LABEL,
     PHASE_EXCITATION,
+    PHASE_PRELIMINAIRES,
+    PHASE_TARGET_COUNTS,
     PHASES,
     PRACTICE_ANSWER_NON,
     PRACTICE_ANSWER_OUI,
     PRACTICE_JOUETS,
+    PRACTICE_ORAL,
     SEX_INDIFFERENT,
     SIGNAL_UPDATE,
     STATUS_ACCEPTED,
@@ -94,6 +99,11 @@ class DuoCoordinator:
         self.current_suggestion: dict | None = None
         self.current_status: str = STATUS_IDLE
         self.current_turn: str | None = None
+        # Valeur retirée entre COUNT_MIN et COUNT_MAX à chaque nouvelle
+        # proposition d'une activité quantifiée ("count"), plutôt que figée
+        # dans le catalogue (voir _effective_duration_minutes et
+        # sensor.py:extra_state_attributes).
+        self.current_count: int | None = None
 
         self.timer_total_seconds: int = 0
         self.timer_remaining_seconds: int = 0
@@ -102,13 +112,21 @@ class DuoCoordinator:
         self._midnight_unsub = None
 
         # Progression guidée par niveau (= phase) : chaque partenaire doit
-        # accepter LEVEL_TARGET_COUNT activités de la phase en cours avant
-        # qu'elle ne passe automatiquement à la suivante. Volontairement pas
-        # persisté : une nouvelle session repart de la phase Excitation.
+        # accepter un nombre donné d'activités de la phase en cours (voir
+        # PHASE_TARGET_COUNTS) avant qu'elle ne passe automatiquement à la
+        # suivante. Volontairement pas persisté : une nouvelle session
+        # repart de la phase Excitation.
         self.session_phase: str = PHASE_EXCITATION
         self.phase_progress: dict[str, int] = {}
         self._reroll_count: int = 0
         self._last_phase: str | None = None
+        # Phase Préliminaires uniquement : {partner: bool} — vrai dès que ce
+        # partenaire a eu au moins une activité de pénétration (doigtage,
+        # jouet...) acceptée pendant ses 2 derniers tours. Tant que c'est
+        # faux au tour 5, la sélection est forcée sur une activité de
+        # pénétration (voir _matches_preliminaires_turn et
+        # async_request_suggestion).
+        self._preliminaires_penetration_done: dict[str, bool] = {}
 
     @property
     def partners(self) -> list[str]:
@@ -395,7 +413,7 @@ class DuoCoordinator:
             "user_id": self.user_id_for(partner),
             "brave_taboos": self.brave_taboos(partner),
             "phase_progress": self.phase_progress.get(partner, 0),
-            "phase_target": LEVEL_TARGET_COUNT,
+            "phase_target": self._target_count_for(self.session_phase),
             # Notes de préférence par catégorie (0-5). Une catégorie absente
             # équivaut à la note neutre par défaut (3), comme dans _rating_for.
             "preferences": dict(self.profile.get("preferences", {}).get(partner, {})),
@@ -478,6 +496,7 @@ class DuoCoordinator:
         # Nouvelle soirée : la progression guidée repart de la phase Excitation.
         self.session_phase = PHASE_EXCITATION
         self.phase_progress = {}
+        self._preliminaires_penetration_done = {}
         await self.async_reset_session()
         _LOGGER.debug("Duo : humeurs réinitialisées (minuit)")
 
@@ -617,6 +636,25 @@ class DuoCoordinator:
             return True
         return not self.lingerie_worn(actor)
 
+    def _activity_is_oral(self, activity: dict) -> bool:
+        return any(practice == PRACTICE_ORAL for practice, _role in self._practice_entries(activity))
+
+    def _matches_preliminaires_turn(self, activity: dict, actor: str) -> bool:
+        """Phase Préliminaires uniquement, et seulement tant qu'elle est la
+        phase guidée en cours (sinon le tour n'a pas de sens — voir
+        _async_register_level_progress) : la pénétration (doigtage, jouet)
+        n'est proposée qu'aux 2 derniers tours, le sexe oral qu'à partir du
+        3e, sur PRELIMINAIRES_TARGET_COUNT tours au total."""
+        if activity.get("phase") != PHASE_PRELIMINAIRES or self.session_phase != PHASE_PRELIMINAIRES:
+            return True
+        target = self._target_count_for(PHASE_PRELIMINAIRES)
+        round_number = self.phase_progress.get(actor, 0) + 1
+        if activity.get("penetration") and round_number < target - 1:
+            return False
+        if self._activity_is_oral(activity) and round_number < 3:
+            return False
+        return True
+
     async def async_request_suggestion(
         self,
         turn: str | None = None,
@@ -640,13 +678,27 @@ class DuoCoordinator:
         if not _is_reroll:
             self._reroll_count = 0
 
+        # Dernier tour de la phase Préliminaires : si aucune activité de
+        # pénétration n'a encore été acceptée sur les 2 derniers tours de cet
+        # acteur, on la rend obligatoire plutôt que simplement possible (voir
+        # PHASE_TARGET_COUNTS et le docstring d'activities.py).
+        force_penetration = (
+            effective_phase == PHASE_PRELIMINAIRES
+            and self.session_phase == PHASE_PRELIMINAIRES
+            and self.phase_progress.get(turn, 0) + 1 >= self._target_count_for(PHASE_PRELIMINAIRES)
+            and not self._preliminaires_penetration_done.get(turn, False)
+        )
+
         def _eligible(activity: dict, *, with_phase: bool) -> bool:
+            if force_penetration and not activity.get("penetration"):
+                return False
             return (
                 self._matches_sex(activity, actor_sex, receiver_sex)
                 and self._matches_accessory(activity, actor_sex, receiver_sex)
                 and self._matches_preference(activity, proposer)
                 and self._matches_practice_limits(activity, turn, proposer)
                 and self._matches_lingerie_state(activity, turn)
+                and self._matches_preliminaires_turn(activity, turn)
                 and (self._matches_phase(activity, effective_phase) if with_phase else True)
             )
 
@@ -673,6 +725,9 @@ class DuoCoordinator:
         self.current_suggestion = activity
         self.current_status = STATUS_PROPOSED
         self.current_turn = turn
+        self.current_count = (
+            random.randint(COUNT_MIN, COUNT_MAX) if activity.get("duration_mode") == "count" else None
+        )
         self._last_phase = effective_phase
         self._signal()
         return activity
@@ -704,6 +759,9 @@ class DuoCoordinator:
             # Au-delà de MAX_REROLLS refus d'affilée, on laisse la main au
             # couple plutôt que d'insister automatiquement.
 
+    def _target_count_for(self, phase: str) -> int:
+        return PHASE_TARGET_COUNTS.get(phase, LEVEL_TARGET_COUNT)
+
     def _async_register_level_progress(self, activity: dict) -> None:
         """Comptabilise une activité acceptée pour la progression de niveau,
         uniquement si elle correspond à la phase guidée en cours (une
@@ -712,8 +770,11 @@ class DuoCoordinator:
         if activity.get("phase") != self.session_phase:
             return
         actor = self.current_turn
+        if self.session_phase == PHASE_PRELIMINAIRES and activity.get("penetration"):
+            self._preliminaires_penetration_done[actor] = True
         self.phase_progress[actor] = self.phase_progress.get(actor, 0) + 1
-        if all(self.phase_progress.get(p, 0) >= LEVEL_TARGET_COUNT for p in self.partners):
+        target = self._target_count_for(self.session_phase)
+        if all(self.phase_progress.get(p, 0) >= target for p in self.partners):
             self._advance_session_phase()
 
     def _advance_session_phase(self) -> None:
@@ -726,6 +787,7 @@ class DuoCoordinator:
         # Déjà à la dernière phase (résolution) : on y reste, la soirée est
         # "complète" — rien de plus à avancer automatiquement.
         self.phase_progress = {}
+        self._preliminaires_penetration_done = {}
 
     async def _async_log_history(self, activity: dict, response: str) -> None:
         history = self.profile.setdefault("history", [])
@@ -742,12 +804,15 @@ class DuoCoordinator:
         await self.async_save()
 
     def _effective_duration_minutes(self, activity: dict) -> float:
-        """Durée du minuteur, en minutes. Fixe (non aléatoire) : pour une
-        activité quantifiée en nombre d'actions plutôt qu'en temps, on dérive
-        une durée indicative (~4 s par action) juste pour garder le même
-        minuteur/bips sonores, sans jamais dépasser MAX_ACTIVITY_MINUTES."""
+        """Durée du minuteur, en minutes. Pour une activité quantifiée en
+        nombre d'actions plutôt qu'en temps, on dérive une durée indicative
+        (~4 s par action) du nombre tiré au sort pour cette proposition
+        (voir current_count), juste pour garder le même minuteur/bips
+        sonores, sans jamais dépasser MAX_ACTIVITY_MINUTES. Le temps reste
+        lui fixe, propre à chaque activité (non aléatoire)."""
         if activity.get("duration_mode") == "count":
-            seconds = max(20, min(activity["count"] * 4, MAX_ACTIVITY_MINUTES * 60))
+            count = self.current_count or COUNT_MIN
+            seconds = max(20, min(count * 4, MAX_ACTIVITY_MINUTES * 60))
             return seconds / 60
         return activity["duration_minutes"]
 

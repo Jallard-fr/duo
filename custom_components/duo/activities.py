@@ -120,6 +120,7 @@ def _activity(
     position: str | None = None,
     practice: str | None = None,
     practices: list[tuple[str, str]] | None = None,
+    penetration: bool = False,
     actor_sex: str = SEX_INDIFFERENT,
     receiver_sex: str = SEX_INDIFFERENT,
 ) -> dict:
@@ -158,6 +159,7 @@ def _activity(
         "position": position,
         "practice": practice,
         "practices": practices,
+        "penetration": penetration,
         "actor_sex": actor_sex,
         "receiver_sex": receiver_sex,
         **mode_fields,
@@ -365,6 +367,7 @@ ACTIVITIES = [
         "{actor} caresse et pénètre doucement {receiver} du bout des doigts, en s'adaptant à ses réactions.",
         4, duration=3,
         receiver_sex=SEX_FEMME,
+        penetration=True,
     ),
     _activity(
         "preliminaires_masturbation_manuelle", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
@@ -380,6 +383,14 @@ ACTIVITIES = [
         4, duration=3,
         receiver_sex=SEX_FEMME,
         accessory=_accessory_category("vibrant", required=False),
+    ),
+    _activity(
+        "preliminaires_jouet_penetration", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
+        "Pénétration avec un jouet",
+        "{actor} insère délicatement le jouet vibrant choisi et laisse {receiver} s'habituer à la sensation, à son rythme.",
+        4, duration=3,
+        accessory=_accessory_category("vibrant", required=True),
+        penetration=True,
     ),
     _activity(
         "preliminaires_nuque_epaules", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
@@ -552,6 +563,7 @@ ACTIVITIES = [
         accessory=_accessory_id("foulards", required=True),
         practice=PRACTICE_LIENS,
         receiver_sex=SEX_FEMME,
+        penetration=True,
     ),
     _activity(
         "preliminaires_mains_attachees_doigtage", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
@@ -561,6 +573,7 @@ ACTIVITIES = [
         accessory=_accessory_id("menottes_douces", required=True),
         practice=PRACTICE_LIENS,
         receiver_sex=SEX_FEMME,
+        penetration=True,
     ),
     _activity(
         "preliminaires_mains_liees_masturbation", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
@@ -842,6 +855,25 @@ _CARESS_METHODS = [
 _RESTRAINTS = ["libre", "mobile", "fixe"]
 _RESTRAINT_LABELS = {"libre": None, "mobile": "mains liées", "fixe": "mains attachées"}
 
+# Positions génériques (voir POSITION_* dans const.py) réutilisées ici comme
+# encore une dimension de variation, en plus de la contrainte et du bandeau
+# ci-dessus — le couple a explicitement demandé de multiplier au maximum les
+# combinaisons de positions. ``None`` = pas de position précisée (comme
+# avant l'ajout de cette dimension).
+_CARESS_POSITIONS = [
+    (None, None, None),
+    (POSITION_ALLONGE, "allongé", "{receiver} est allongé(e)."),
+    (POSITION_QUATRE_PATTES, "à quatre pattes", "{receiver} est à quatre pattes."),
+    (
+        POSITION_PENCHE_AVANT,
+        "penché",
+        "{receiver} est penché(e) en avant, appuyé(e) sur un meuble ou un mur.",
+    ),
+    (POSITION_DEBOUT, "debout", "{receiver} est debout."),
+    (POSITION_ASSIS, "assis", "{receiver} est assis(e), sur une chaise ou le bord du lit."),
+    (POSITION_GENOUX, "à genoux", "{receiver} est à genoux."),
+]
+
 
 def _restraint_intro(restraint: str, blindfold: bool) -> str:
     """Phrase d'introduction posant le contexte (liens, bandeau) avant
@@ -872,46 +904,137 @@ def _generate_caress_variants() -> list[dict]:
             action = template.format(zone=zone_phrase)
             for restraint in _RESTRAINTS:
                 for blindfold in (False, True):
-                    description = _restraint_intro(restraint, blindfold) + action
-                    intensity = min(
-                        5, base_intensity + int(restraint != "libre") + int(blindfold)
-                    )
-                    duration = min(
-                        MAX_ACTIVITY_MINUTES,
-                        base_duration + (1 if restraint != "libre" else 0),
-                    )
-
-                    accessory = _restraint_accessory(restraint)
-                    if accessory is None and method_key == "objet":
-                        accessory = _accessory_id("plume", required=False)
-
-                    title_suffix = [
-                        label
-                        for label in (_RESTRAINT_LABELS[restraint], "yeux bandés" if blindfold else None)
-                        if label
-                    ]
-                    title = f"{method_title} : {zone_title}"
-                    if title_suffix:
-                        title += " (" + ", ".join(title_suffix) + ")"
-
-                    variants.append(
-                        _activity(
-                            f"caresse_{zone_key}_{method_key}_{restraint}_"
-                            f"{'bandeau' if blindfold else 'sans'}",
-                            category,
-                            PHASE_PRELIMINAIRES,
-                            title,
-                            description,
-                            intensity,
-                            duration=duration,
-                            accessory=accessory,
-                            practice=PRACTICE_LIENS if restraint != "libre" else None,
+                    for position_const, position_title, position_clause in _CARESS_POSITIONS:
+                        description = _restraint_intro(restraint, blindfold) + action
+                        if position_clause:
+                            description += " " + position_clause
+                        intensity = min(
+                            5, base_intensity + int(restraint != "libre") + int(blindfold)
                         )
-                    )
+                        duration = min(
+                            MAX_ACTIVITY_MINUTES,
+                            base_duration + (1 if restraint != "libre" else 0),
+                        )
+
+                        accessory = _restraint_accessory(restraint)
+                        if accessory is None and method_key == "objet":
+                            accessory = _accessory_id("plume", required=False)
+
+                        title_suffix = [
+                            label
+                            for label in (
+                                _RESTRAINT_LABELS[restraint],
+                                "yeux bandés" if blindfold else None,
+                                position_title,
+                            )
+                            if label
+                        ]
+                        title = f"{method_title} : {zone_title}"
+                        if title_suffix:
+                            title += " (" + ", ".join(title_suffix) + ")"
+
+                        variants.append(
+                            _activity(
+                                f"caresse_{zone_key}_{method_key}_{restraint}_"
+                                f"{'bandeau' if blindfold else 'sans'}_"
+                                f"{position_const or 'aucune'}",
+                                category,
+                                PHASE_PRELIMINAIRES,
+                                title,
+                                description,
+                                intensity,
+                                duration=duration,
+                                accessory=accessory,
+                                practice=PRACTICE_LIENS if restraint != "libre" else None,
+                                position=position_const,
+                            )
+                        )
     return variants
 
 
-ACTIVITIES += _generate_caress_variants()
+# ---------------------------------------------------------------------------
+# Actes précis (oral, doigtage, stimulation manuelle/clitoridienne, jouet)
+# déclinés selon la position de chacun des deux partenaires — par exemple
+# une fellation avec l'un à genoux et l'autre assis ou debout, comme demandé
+# explicitement. Contrairement aux caresses ci-dessus, ces actes distinguent
+# la position de l'acteur ET celle du/de la receveur·se plutôt qu'une seule
+# position partagée.
+# ---------------------------------------------------------------------------
+
+_POSITION_STANCE = {
+    POSITION_ALLONGE: "allongé(e)",
+    POSITION_QUATRE_PATTES: "à quatre pattes",
+    POSITION_PENCHE_AVANT: "penché(e) en avant, appuyé(e) sur un meuble ou un mur",
+    POSITION_DEBOUT: "debout",
+    POSITION_ASSIS: "assis(e), sur une chaise ou le bord du lit",
+    POSITION_GENOUX: "à genoux",
+}
+_POSITION_TITLES = {
+    POSITION_ALLONGE: "allongé",
+    POSITION_QUATRE_PATTES: "à quatre pattes",
+    POSITION_PENCHE_AVANT: "penché",
+    POSITION_DEBOUT: "debout",
+    POSITION_ASSIS: "assis",
+    POSITION_GENOUX: "à genoux",
+}
+_POSITIONS_LIST = [
+    POSITION_ALLONGE,
+    POSITION_QUATRE_PATTES,
+    POSITION_PENCHE_AVANT,
+    POSITION_DEBOUT,
+    POSITION_ASSIS,
+    POSITION_GENOUX,
+]
+
+# clé, catégorie, titre, gabarit (placeholders au premier degré : pas de
+# .format() intermédiaire ici, donc pas d'accolades à doubler), sexe du/de
+# la receveur·se, accessoire, pénétration ?, sexe oral ?
+_POSITIONED_ACTS = [
+    ("oral", CATEGORY_PRELIMINAIRES, "Stimulation orale",
+     "{actor} fait {oral_on_receiver} à {receiver}.", SEX_INDIFFERENT, None, False, True),
+    ("doigtage", CATEGORY_PRELIMINAIRES, "Doigtage",
+     "{actor} caresse et pénètre {receiver} du bout des doigts.", SEX_FEMME, None, True, False),
+    ("masturbation", CATEGORY_PRELIMINAIRES, "Stimulation manuelle",
+     "{actor} stimule {receiver} avec la main.", SEX_HOMME, None, False, False),
+    ("clitoridienne", CATEGORY_PRELIMINAIRES, "Stimulation clitoridienne",
+     "{actor} stimule le clitoris de {receiver} du bout des doigts ou avec l'accessoire vibrant choisi.",
+     SEX_FEMME, _accessory_category("vibrant", required=False), False, False),
+    ("jouet", CATEGORY_PRELIMINAIRES, "Pénétration avec un jouet",
+     "{actor} insère délicatement le jouet vibrant choisi et laisse {receiver} s'habituer à la sensation.",
+     SEX_INDIFFERENT, _accessory_category("vibrant", required=True), True, False),
+]
+
+
+def _generate_positioned_acts() -> list[dict]:
+    variants = []
+    for act_key, category, act_title, template, receiver_sex, accessory, penetration, is_oral in _POSITIONED_ACTS:
+        for actor_pos in _POSITIONS_LIST:
+            for receiver_pos in _POSITIONS_LIST:
+                description = (
+                    template
+                    + " {actor} est " + _POSITION_STANCE[actor_pos]
+                    + ", {receiver} est " + _POSITION_STANCE[receiver_pos] + "."
+                )
+                title = f"{act_title} ({_POSITION_TITLES[actor_pos]} / {_POSITION_TITLES[receiver_pos]})"
+                variants.append(
+                    _activity(
+                        f"acte_{act_key}_{actor_pos}_{receiver_pos}",
+                        category,
+                        PHASE_PRELIMINAIRES,
+                        title,
+                        description,
+                        4,
+                        duration=2,
+                        accessory=accessory,
+                        practice=PRACTICE_ORAL if is_oral else None,
+                        penetration=penetration,
+                        receiver_sex=receiver_sex,
+                    )
+                )
+    return variants
+
+
+ACTIVITIES += _generate_caress_variants() + _generate_positioned_acts()
 
 
 def get_activity(activity_id: str) -> dict | None:

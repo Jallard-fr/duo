@@ -156,7 +156,7 @@ class DuoSuggestionSensor(DuoEntityBase):
             "intensity": activity["intensity"],
             "duration_mode": activity.get("duration_mode", "time"),
             "duration_minutes": activity.get("duration_minutes"),
-            "count": activity.get("count"),
+            "count": self.coordinator.current_count,
             "count_unit": activity.get("count_unit"),
             "position": position,
             "position_label": POSITION_LABELS.get(position),
