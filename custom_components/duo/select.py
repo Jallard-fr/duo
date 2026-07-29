@@ -49,8 +49,15 @@ class DuoMoodSelect(SelectEntity):
 
     @property
     def current_option(self) -> str:
+        # "?" (MOOD_UNSET) est un état d'affichage tant qu'aucun choix n'a
+        # été fait aujourd'hui, mais n'est volontairement pas une option
+        # sélectionnable ici (absente de MOOD_OPTIONS) : ce sélecteur natif
+        # retombe alors sur "Pas aujourd'hui" plutôt que de renvoyer une
+        # valeur hors de sa propre liste d'options.
         mood_key = self.coordinator.profile.get("moods", {}).get(self.partner, MOOD_NOT_TONIGHT)
-        return MOOD_LABELS.get(mood_key, MOOD_LABELS[MOOD_NOT_TONIGHT])
+        if mood_key not in MOOD_OPTIONS:
+            mood_key = MOOD_NOT_TONIGHT
+        return MOOD_LABELS[mood_key]
 
     async def async_select_option(self, option: str) -> None:
         # Le contexte de l'appel de service porte l'utilisateur HA à l'origine

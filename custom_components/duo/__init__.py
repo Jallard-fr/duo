@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from pathlib import Path
 
@@ -11,8 +12,9 @@ import voluptuous as vol
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import Event, HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers import config_validation as cv
@@ -20,6 +22,8 @@ from homeassistant.helpers import config_validation as cv
 from .const import (
     CATEGORIES,
     DOMAIN,
+    MOOD_MAYBE_LATER,
+    MOOD_NOT_TONIGHT,
     MOOD_OPTIONS,
     PHASES,
     POSITIONS,
@@ -46,13 +50,24 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ["sensor", "select"]
 
+# Action des boutons de notification mobile (voir
+# DuoCoordinator._response_actions) : "duo_response_<entry_id>_<réponse>".
+_NOTIFICATION_ACTION_RE = re.compile(
+    r"^duo_response_(?P<entry_id>[0-9a-f]+)_(?P<response>pas_aujourdhui|plus_tard)$"
+)
+_NOTIFICATION_ACTION_MOODS = {
+    "pas_aujourdhui": MOOD_NOT_TONIGHT,
+    "plus_tard": MOOD_MAYBE_LATER,
+}
+_NOTIFICATION_LISTENER_KEY = f"{DOMAIN}_notification_action_registered"
+
 # --- Carte Lovelace servie par l'intégration -------------------------------
 # Le fichier custom_components/duo/frontend/duo-card.js est exposé sur
 # /duo_frontend/duo-card.js puis déclaré automatiquement au frontend :
 # aucune ressource Lovelace à ajouter manuellement.
 URL_BASE = "/duo_frontend"
 CARD_FILE = "duo-card.js"
-CARD_VERSION = "0.20.0"  # à incrémenter à chaque modification du JS
+CARD_VERSION = "0.21.0"  # à incrémenter à chaque modification du JS
 FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
 
 SET_PREFERENCE_SCHEMA = vol.Schema(
@@ -167,7 +182,55 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """
     await _async_register_frontend(hass)
     async_at_started(hass, _async_register_lovelace_resource)
+    _async_register_notification_actions(hass)
     return True
+
+
+def _partner_for_device_id(coordinator: DuoCoordinator, device_id: str) -> str | None:
+    """Retrouve le partenaire associé à l'appareil mobile qui a déclenché
+    l'action de notification, via le registre d'appareils Home Assistant
+    (l'événement mobile_app_notification_action fournit un device_id du
+    registre, pas directement l'entrée de config mobile_app)."""
+    device_reg = dr.async_get(coordinator.hass)
+    device = device_reg.async_get(device_id)
+    if not device:
+        return None
+    for config_entry_id in device.config_entries:
+        entry = coordinator.hass.config_entries.async_get_entry(config_entry_id)
+        if not entry or entry.domain != "mobile_app":
+            continue
+        partner = coordinator.partner_for_user(entry.data.get("user_id"))
+        if partner:
+            return partner
+    return None
+
+
+def _async_register_notification_actions(hass: HomeAssistant) -> None:
+    """Écoute les boutons "Pas aujourd'hui" / "Peut-être plus tard" des
+    notifications mobiles (voir DuoCoordinator._response_actions), une seule
+    fois pour toute l'installation."""
+    if hass.data.get(_NOTIFICATION_LISTENER_KEY):
+        return
+
+    async def _handle_notification_action(event: Event) -> None:
+        match = _NOTIFICATION_ACTION_RE.match(event.data.get("action", ""))
+        if not match:
+            return
+        coordinator = hass.data.get(DOMAIN, {}).get(match.group("entry_id"))
+        if not coordinator:
+            return
+        device_id = event.data.get("device_id")
+        partner = _partner_for_device_id(coordinator, device_id) if device_id else None
+        if not partner:
+            _LOGGER.warning(
+                "Duo : impossible d'identifier qui a répondu à la notification"
+            )
+            return
+        mood = _NOTIFICATION_ACTION_MOODS[match.group("response")]
+        await coordinator.async_respond_to_overture(partner, mood)
+
+    hass.bus.async_listen("mobile_app_notification_action", _handle_notification_action)
+    hass.data[_NOTIFICATION_LISTENER_KEY] = True
 
 
 async def _async_register_frontend(hass: HomeAssistant) -> None:

@@ -167,6 +167,7 @@ set_mood:
         select:
           options:
             - pas_ce_soir
+            - plus_tard
             - douceur
             - curieux
             - nouveaute

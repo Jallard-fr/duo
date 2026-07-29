@@ -13,6 +13,7 @@ from .accessories import ACCESSORY_CATALOG, ACCESSORY_CATEGORIES
 from .const import (
     CONF_ACCESSORIES,
     CONF_CONSENT,
+    CONF_DASHBOARD_PATH,
     CONF_NOTIFY1,
     CONF_NOTIFY2,
     CONF_PARTNER1,
@@ -103,6 +104,7 @@ class DuoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_PERSON2: person2 or "",
                         CONF_NOTIFY1: "",
                         CONF_NOTIFY2: "",
+                        CONF_DASHBOARD_PATH: "",
                     },
                 )
 
@@ -166,6 +168,10 @@ class DuoOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_NOTIFY2,
                     description={"suggested_value": options.get(CONF_NOTIFY2) or ""},
+                ): TEXT_SELECTOR,
+                vol.Optional(
+                    CONF_DASHBOARD_PATH,
+                    description={"suggested_value": options.get(CONF_DASHBOARD_PATH) or ""},
                 ): TEXT_SELECTOR,
                 vol.Optional(
                     CONF_ACCESSORIES,

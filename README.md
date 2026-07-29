@@ -15,7 +15,8 @@ Duo est une intégration [Home Assistant](https://www.home-assistant.io/) + une 
   - **Chaque questionnaire est verrouillé à une seule personne** : si l'identité (via association à une personne Home Assistant) est connue, il démarre directement pour cette personne ; sinon un écran "qui répond ?" est affiché avant la première question, pour qu'on ne réponde jamais par erreur à la place de l'autre.
 - **Braver ses interdits** : un bouton personnel par partenaire qui, une fois activé, rend à nouveau proposables les catégories/pratiques qu'il a exclues et les activités récemment déclinées, pour les prochaines suggestions — jusqu'à ce qu'il le désactive.
 - **Permissions par partenaire** : si une personne Home Assistant est associée à chaque partenaire, préférences, limites et mode "braver ses interdits" ne sont modifiables que par la personne concernée — comme c'était déjà le cas pour l'humeur du soir.
-- **Humeur du soir** : chaque partenaire indique s'il/elle est partant(e), d'humeur douce, curieux(se), envie de nouveauté ou de torride, avec les accessoires qu'il/elle propose et une idée libre à tester. L'autre partenaire est notifié en push sur tous ses appareils mobiles.
+- **Humeur du soir** : "?" (aucun positionnement aujourd'hui, avec des émoticônes coquins), Pas aujourd'hui, Peut-être plus tard, Envie de douceur, Curieux(se), Envie de nouveauté ou Envie de torride — avec les accessoires envisagés et une idée libre à tester. Chaque nouvelle journée repart de "?" tant qu'aucun des deux n'a fait de choix. L'autre partenaire est notifié en push sur tous ses appareils mobiles.
+- **Notification mobile actionnable** : le corps de la notification ouvre directement la carte Duo (tableau de bord configurable), et deux gros boutons natifs de l'application — « 🚫 Pas aujourd'hui » et « 🕒 Peut-être plus tard » — permettent de répondre sans même ouvrir l'app, sans risque de confondre les deux (ce sont des boutons distincts rendus par le système, pas du texte cliquable). Une réponse prévient l'autre partenaire comme un changement d'humeur normal, puis remet l'humeur des deux à "?" pour repartir sur une page blanche.
 - **Association partenaire ↔ personne Home Assistant** (facultative) : chacun ne peut alors modifier que sa propre humeur, et Duo sait à qui envoyer la notification.
 - **Suggestions à tour de rôle**, pondérées selon les préférences, l'humeur, le sexe acteur/récepteur, la phase visée et les accessoires disponibles.
 - **Phases temporelles du rapport** : chaque activité est rattachée à un moment — **Excitation** (encore habillés, début de la stimulation), **Préliminaires** (contacts avec les zones érogènes : baisers, caresses des doigts ou de la bouche), **Intense** (pénétration intense) ou **Résolution** (tendresse après) — inspirées du modèle des phases de la réponse sexuelle de Masters & Johnson (1966) et du modèle triphasique de Kaplan (1979), adaptées à un usage concret pour le couple. On peut demander une suggestion pour une phase précise (service ou carte) plutôt que de piocher au hasard dans tout le catalogue.
@@ -49,7 +50,7 @@ custom_components/duo/
   __init__.py            Point d'entrée, services, enregistrement automatique de la carte
   config_flow.py         Assistant de configuration (prénoms, sexe, consentement, personne HA)
   coordinator.py         État runtime, mémoire persistante, minuteur, notifications
-  activities.py          Catalogue des suggestions (4675 activités, texte non graphique, durée ≤ 3 min ou comptage, position, sexe acteur/récepteur)
+  activities.py          Catalogue des suggestions (4633 activités, texte non graphique, durée ≤ 3 min ou comptage, position, sexe acteur/récepteur)
   accessories.py         Catalogue prédéfini d'accessoires (seule source ; lu dynamiquement par la carte)
   sensor.py / select.py  Entités exposées (suggestion, minuteur, humeur, historique, soirée)
   services.yaml          Définition des services appelables
@@ -80,7 +81,7 @@ La carte Lovelace est servie automatiquement par l'intégration (`/duo_frontend/
 
 1. **Paramètres → Appareils et services → Ajouter une intégration → Duo**.
 2. Renseignez le prénom et le sexe (homme/femme) de chaque partenaire, associez éventuellement chacun à une **personne Home Assistant** (`person.*`), puis confirmez la case de majorité/consentement mutuel (obligatoire).
-3. Dans les **options** de l'intégration (Paramètres → Appareils et services → Duo → Configurer), vous pouvez à tout moment ajuster l'association personne/notify, surcharger manuellement les services `notify.*` utilisés, et **modifier la liste des accessoires du couple** (séparés par des virgules) — sans passer par la carte.
+3. Dans les **options** de l'intégration (Paramètres → Appareils et services → Duo → Configurer), vous pouvez à tout moment ajuster l'association personne/notify, surcharger manuellement les services `notify.*` utilisés, indiquer le **chemin du tableau de bord** contenant la carte (utilisé comme lien cliquable dans les notifications mobiles ; par défaut `/lovelace/0`), et **modifier la liste des accessoires du couple** (séparés par des virgules) — sans passer par la carte.
 4. Notez l'`entry_id` généré si besoin (visible via **Outils de développement → Modèles** avec `{{ config_entries()|selectattr('domain','eq','duo')|map(attribute='entry_id')|list }}`).
 
 ## Ajouter la carte au tableau de bord
@@ -139,7 +140,7 @@ L'enregistrement de la carte est entièrement automatique : rien à ajouter à l
 
 ## Philosophie du contenu
 
-Toutes les suggestions du catalogue (`custom_components/duo/activities.py`, 4675 entrées) sont écrites à un niveau **suggestif, catégoriel et non graphique**. Duo ne décrit jamais d'acte sexuel explicite : il propose une ambiance, une durée (3 minutes maximum, imposée par le code) ou un nombre d'actions, un thème, un ciblage acteur/récepteur, une phase et parfois une position générique, et laisse le couple libre de décider, ensemble et dans le respect de leurs limites, comment vivre le moment. Aucune activité n'est inspirée d'une pratique présentant un risque physique réel (étouffement, bâillonnement...) — la santé prime toujours sur la nouveauté.
+Toutes les suggestions du catalogue (`custom_components/duo/activities.py`, 4633 entrées) sont écrites à un niveau **suggestif, catégoriel et non graphique**. Duo ne décrit jamais d'acte sexuel explicite : il propose une ambiance, une durée (3 minutes maximum, imposée par le code) ou un nombre d'actions, un thème, un ciblage acteur/récepteur, une phase et parfois une position générique, et laisse le couple libre de décider, ensemble et dans le respect de leurs limites, comment vivre le moment. Aucune activité n'est inspirée d'une pratique présentant un risque physique réel (étouffement, bâillonnement...) — la santé prime toujours sur la nouveauté.
 
 Le découpage en phases (`custom_components/duo/const.py`, `PHASE_*`) s'inspire de deux modèles de référence en sexologie — le modèle des phases de la réponse sexuelle de **Masters & Johnson** (*Human Sexual Response*, 1966) et le modèle triphasique de **Helen Singer Kaplan** (1979), qui a mis en avant la phase de désir en amont — adaptés à un découpage pratique en 4 étapes concrètes :
 

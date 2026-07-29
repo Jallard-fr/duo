@@ -149,7 +149,8 @@ function syncAccessoryCatalog(evAttrs) {
 
 // [clé, libellé, émoticône, intensité 0-4]
 const MOODS = [
-  ["pas_ce_soir", "Pas ce soir", "\u{1F634}", 0],
+  ["pas_ce_soir", "Pas aujourd'hui", "\u{1F634}", 0],
+  ["plus_tard", "Peut-être plus tard", "\u{1F552}", 1],
   ["douceur", "Envie de douceur", "\u{1F497}", 1],
   ["curieux", "Curieux(se)", "\u{1F60F}", 2],
   ["nouveaute", "Envie de nouveauté", "\u{2728}", 3],

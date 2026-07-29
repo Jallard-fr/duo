@@ -885,17 +885,23 @@ _CARESS_POSITIONS = [
 ]
 
 
-def _restraint_intro(restraint: str, blindfold: bool) -> str:
+def _restraint_intro(restraint: str, blindfold: bool, position: str | None = None) -> str:
     """Phrase d'introduction posant le contexte (liens, bandeau) avant
     l'action elle-même ; vide si ni l'un ni l'autre ne s'applique. Nomme
     {receiver} une seule fois : c'est toujours la première mention de la
-    description quand elle est présente."""
+    description quand elle est présente. Assis·e, "attaché à un point fixe"
+    devient "mains attachées dans le dos" — plus plausible que d'attacher
+    la personne à un point fixe alors qu'elle est assise."""
     if restraint == "mobile":
         extra = " et les yeux bandés" if blindfold else ""
         return "{receiver} a les mains liées mais mobiles" + extra + ", pendant que "
     if restraint == "fixe":
+        if position == POSITION_ASSIS:
+            base = "{receiver} a les mains attachées dans le dos"
+        else:
+            base = "{receiver} est attaché{receiver_e} à un point fixe"
         extra = ", les yeux bandés," if blindfold else ""
-        return "{receiver} est attaché{receiver_e} à un point fixe" + extra + " pendant que "
+        return base + extra + " pendant que "
     if blindfold:
         return "Les yeux bandés, {receiver} se laisse surprendre pendant que "
     return ""
@@ -909,22 +915,37 @@ def _restraint_accessory(restraint: str) -> dict | None:
     return None
 
 
+def _restraint_label(restraint: str, position: str | None) -> str | None:
+    """Libellé de contrainte pour le titre — voir _restraint_intro pour la
+    même exception "assis·e"."""
+    if restraint == "fixe" and position == POSITION_ASSIS:
+        return "mains dans le dos"
+    return _RESTRAINT_LABELS[restraint]
+
+
 def _generate_caress_variants() -> list[dict]:
     variants = []
     for zone_key, zone_article, zone_possessive, zone_title in _CARESS_ZONES:
         for method_key, category, method_title, verb, trailing, base_intensity, base_duration in _CARESS_METHODS:
+            # On ne mordille pas le cuir chevelu / les cheveux.
+            if zone_key == "cuir_chevelu" and method_key == "mordille":
+                continue
             for restraint in _RESTRAINTS:
                 for blindfold in (False, True):
-                    intro = _restraint_intro(restraint, blindfold)
-                    # {receiver} n'est nommé·e qu'une fois : par l'intro
-                    # ci-dessus si elle existe, sinon par l'action elle-même
+                    # {receiver} n'est nommé·e qu'une fois : par l'intro liens/
+                    # bandeau si elle existe, sinon par l'action elle-même
                     # (qui utilise alors "de {receiver}" plutôt que la forme
                     # possessive, qui suppose que le prénom est déjà connu).
-                    if intro:
+                    # Le contenu exact de l'intro dépend de la position (voir
+                    # _restraint_intro), mais pas sa présence : on peut donc
+                    # décider ici du gabarit d'action, hors boucle position.
+                    has_intro = restraint != "libre" or blindfold
+                    if has_intro:
                         action = f"{{actor}} {verb} {zone_possessive}{trailing}."
                     else:
                         action = f"{{actor}} {verb} {zone_article} de {{receiver}}{trailing}."
                     for position_const, position_title, position_clause in _CARESS_POSITIONS:
+                        intro = _restraint_intro(restraint, blindfold, position_const)
                         description = intro + action
                         if position_clause:
                             description += " " + position_clause
@@ -943,7 +964,7 @@ def _generate_caress_variants() -> list[dict]:
                         title_suffix = [
                             label
                             for label in (
-                                _RESTRAINT_LABELS[restraint],
+                                _restraint_label(restraint, position_const),
                                 "yeux bandés" if blindfold else None,
                                 position_title,
                             )
@@ -1058,7 +1079,7 @@ def _generate_positioned_acts() -> list[dict]:
                     f" {{actor_ref}} est {actor_stance}, {{receiver_ref}} est {receiver_stance}."
                 )
                 for restraint in _RESTRAINTS:
-                    intro = _restraint_intro(restraint, blindfold=False)
+                    intro = _restraint_intro(restraint, blindfold=False, position=receiver_pos)
                     description = intro + template + stance_sentence
                     accessory_for_variant = accessory or _restraint_accessory(restraint)
                     practices = []
@@ -1069,7 +1090,7 @@ def _generate_positioned_acts() -> list[dict]:
 
                     title = f"{act_title} ({_POSITION_TITLES[actor_pos]} / {_POSITION_TITLES[receiver_pos]}"
                     if restraint != "libre":
-                        title += ", " + _RESTRAINT_LABELS[restraint]
+                        title += ", " + _restraint_label(restraint, receiver_pos)
                     title += ")"
 
                     variants.append(

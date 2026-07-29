@@ -43,7 +43,8 @@
           "person2": "Personne associée à {partner2}",
           "notify1": "Services notify de {partner1} (facultatif, séparés par des virgules)",
           "notify2": "Services notify de {partner2} (facultatif, séparés par des virgules)",
-          "accessories": "Accessoires possédés par le couple"
+          "accessories": "Accessoires possédés par le couple",
+          "dashboard_path": "Chemin du tableau de bord Lovelace contenant la carte Duo (facultatif, ex. /lovelace-duo/0)"
         }
       }
     },
@@ -53,10 +54,18 @@
   },
   "entity": {
     "sensor": {
-      "current_suggestion": { "name": "Suggestion en cours" },
-      "timer": { "name": "Minuteur" },
-      "history": { "name": "Historique" },
-      "evening": { "name": "Soirée" }
+      "current_suggestion": {
+        "name": "Suggestion en cours"
+      },
+      "timer": {
+        "name": "Minuteur"
+      },
+      "history": {
+        "name": "Historique"
+      },
+      "evening": {
+        "name": "Soirée"
+      }
     }
   }
 }

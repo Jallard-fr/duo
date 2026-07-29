@@ -23,6 +23,7 @@ from .accessories import (
 )
 from .activities import ACTIVITIES, get_activity
 from .const import (
+    CONF_DASHBOARD_PATH,
     CONF_NOTIFY1,
     CONF_NOTIFY2,
     CONF_PARTNER1,
@@ -41,8 +42,10 @@ from .const import (
     MOOD_EMOJI,
     MOOD_INTENSITY,
     MOOD_LABELS,
+    MOOD_MAYBE_LATER,
     MOOD_NOT_TONIGHT,
     MOOD_NOVELTY,
+    MOOD_UNSET,
     NEW_IDEA_UNKNOWN,
     NEW_IDEA_UNKNOWN_LABEL,
     PHASE_EXCITATION,
@@ -242,7 +245,7 @@ class DuoCoordinator:
             self.profile.update(stored)
         for partner in self.partners:
             self.profile.setdefault("preferences", {}).setdefault(partner, {})
-            self.profile.setdefault("moods", {}).setdefault(partner, MOOD_NOT_TONIGHT)
+            self.profile.setdefault("moods", {}).setdefault(partner, MOOD_UNSET)
             self.profile.setdefault("evening", {}).setdefault(partner, {})
             self.profile.setdefault("brave_taboos", {}).setdefault(partner, False)
             self.profile.setdefault("practice_limits", {}).setdefault(partner, {})
@@ -307,9 +310,10 @@ class DuoCoordinator:
         notify: bool = True,
     ) -> None:
         """Enregistre l'humeur du soir d'un partenaire et prévient l'autre.
-        Envoyer son humeur vaut aussi engagement pour la soirée (voir
-        both_engaged) : une fois les deux partenaires engagés, le premier
-        est prévenu que c'est parti (voir _async_notify_both_engaged)."""
+        Choisir une humeur autre que "pas aujourd'hui"/"peut-être plus tard"
+        vaut aussi engagement pour la soirée (voir both_engaged) : une fois
+        les deux partenaires engagés, le premier est prévenu que c'est parti
+        (voir _async_notify_both_engaged)."""
         previous = self.profile.setdefault("moods", {}).get(partner)
         evening = self.profile.setdefault("evening", {}).setdefault(partner, {})
         previous_evening = dict(evening)
@@ -323,7 +327,7 @@ class DuoCoordinator:
 
         evening["accessories"] = list(accessories or [])
         evening["new_idea"] = new_idea
-        evening["engaged"] = True
+        evening["engaged"] = mood not in (MOOD_NOT_TONIGHT, MOOD_MAYBE_LATER)
         evening["updated"] = dt_util.now().isoformat(timespec="seconds")
 
         await self.async_save()
@@ -339,6 +343,19 @@ class DuoCoordinator:
 
         if notify and not was_engaged and self.both_engaged:
             await self._async_notify_both_engaged(partner)
+
+    async def async_respond_to_overture(self, partner: str, mood: str) -> None:
+        """Réponse rapide depuis les boutons d'action de la notification
+        mobile ("Pas aujourd'hui" / "Peut-être plus tard") : prévient l'autre
+        exactement comme un changement d'humeur normal, puis repart de zéro
+        ("?") pour les deux, plutôt que de garder cette réponse affichée."""
+        await self.async_set_mood(partner, mood, notify=True)
+        for p in self.partners:
+            self.profile.setdefault("moods", {})[p] = MOOD_UNSET
+            evening = self.profile.setdefault("evening", {}).setdefault(p, {})
+            evening["engaged"] = False
+        await self.async_save()
+        self._signal()
 
     def lingerie_worn(self, partner: str) -> list[str]:
         """Lingerie (catégorie accessories.py) que ce partenaire a indiqué
@@ -412,7 +429,7 @@ class DuoCoordinator:
 
     def evening_state(self, partner: str) -> dict:
         """État de la soirée pour un partenaire, prêt à être exposé."""
-        mood = self.profile.get("moods", {}).get(partner, MOOD_NOT_TONIGHT)
+        mood = self.profile.get("moods", {}).get(partner, MOOD_UNSET)
         evening = self.profile.get("evening", {}).get(partner, {})
         new_idea = evening.get("new_idea")
         lingerie = self.lingerie_worn(partner)
@@ -497,7 +514,7 @@ class DuoCoordinator:
         deux engagés) : remet humeur, engagement et accessoires du soir à
         zéro pour les deux partenaires, et réinitialise la session en cours."""
         for partner in self.partners:
-            self.profile.setdefault("moods", {})[partner] = MOOD_NOT_TONIGHT
+            self.profile.setdefault("moods", {})[partner] = MOOD_UNSET
             evening = self.profile.setdefault("evening", {}).setdefault(partner, {})
             evening["engaged"] = False
             evening["accessories"] = []
@@ -528,6 +545,28 @@ class DuoCoordinator:
 
         return title, "\n".join(lines)
 
+    def _dashboard_url(self) -> str:
+        """Chemin de la page où se trouve la carte Duo (voir
+        CONF_DASHBOARD_PATH), pour le lien cliquable des notifications."""
+        return self.entry.options.get(CONF_DASHBOARD_PATH) or "/lovelace/0"
+
+    def _response_actions(self) -> list[dict]:
+        """Actions de la notification mobile : deux gros boutons distincts,
+        rendus nativement par l'app (donc impossible à confondre l'un avec
+        l'autre), qui déclenchent async_respond_to_overture via l'événement
+        mobile_app_notification_action écouté dans __init__.py."""
+        entry_id = self.entry.entry_id
+        return [
+            {
+                "action": f"duo_response_{entry_id}_pas_aujourdhui",
+                "title": "🚫 Pas aujourd'hui",
+            },
+            {
+                "action": f"duo_response_{entry_id}_plus_tard",
+                "title": "🕒 Peut-être plus tard",
+            },
+        ]
+
     async def _async_notify_partner(self, partner: str, mood: str, evening: dict) -> None:
         """Diffuse l'humeur à tous les appareils de l'autre partenaire."""
         target = self.other_partner(partner)
@@ -549,6 +588,13 @@ class DuoCoordinator:
                 "visibility": "private",
                 "notification_icon": "mdi:heart",
                 "tag": f"duo_mood_{slugify(partner)}",
+                # Toucher le corps de la notification ouvre directement la
+                # carte Duo (voir CONF_DASHBOARD_PATH) ; les deux actions
+                # ci-dessous sont rendues comme de gros boutons séparés par
+                # l'application mobile, pas comme du texte cliquable — donc
+                # impossible de se tromper de bouton par inadvertance.
+                "clickAction": self._dashboard_url(),
+                "actions": self._response_actions(),
             },
         }
 
@@ -567,7 +613,7 @@ class DuoCoordinator:
 
     async def _async_do_midnight_reset(self) -> None:
         for partner in self.partners:
-            self.profile.setdefault("moods", {})[partner] = MOOD_NOT_TONIGHT
+            self.profile.setdefault("moods", {})[partner] = MOOD_UNSET
             self.profile.setdefault("evening", {})[partner] = {
                 "accessories": [],
                 "new_idea": None,
@@ -986,7 +1032,7 @@ class DuoCoordinator:
         self.profile = copy.deepcopy(DEFAULT_PROFILE)
         for partner in self.partners:
             self.profile["preferences"][partner] = {}
-            self.profile["moods"][partner] = MOOD_NOT_TONIGHT
+            self.profile["moods"][partner] = MOOD_UNSET
             self.profile["evening"][partner] = {}
             self.profile["brave_taboos"][partner] = False
             self.profile["practice_limits"][partner] = {}

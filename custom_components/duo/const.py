@@ -33,6 +33,10 @@ CONF_PERSON2 = "person2"
 # appareils mobile_app rattachés à l'utilisateur.
 CONF_NOTIFY1 = "notify1"
 CONF_NOTIFY2 = "notify2"
+# Chemin de la page (dashboard Lovelace) où se trouve la carte Duo, utilisé
+# comme lien cliquable dans les notifications mobiles envoyées au couple.
+# Laisser vide pour retomber sur le tableau de bord par défaut ("/lovelace/0").
+CONF_DASHBOARD_PATH = "dashboard_path"
 # Champ du formulaire d'options utilisé pour cocher, parmi le catalogue
 # prédéfini (voir accessories.py), les accessoires possédés par le couple.
 # Volontairement pas stocké dans entry.options : la liste réelle reste dans
@@ -228,13 +232,20 @@ COUNT_MIN = 5
 COUNT_MAX = 15
 
 MOOD_NOT_TONIGHT = "pas_ce_soir"
+MOOD_MAYBE_LATER = "plus_tard"
 MOOD_TENDERNESS = "douceur"
 MOOD_CURIOUS = "curieux"
 MOOD_NOVELTY = "nouveaute"
 MOOD_TORRID = "torride"
+# Valeur par défaut tant qu'aucun choix n'a été fait aujourd'hui — jamais
+# proposée comme option cliquable (absente de MOOD_OPTIONS), seulement
+# affichée jusqu'au premier vrai choix de la journée (voir async_load,
+# _async_do_midnight_reset, async_end_encounter).
+MOOD_UNSET = "indetermine"
 
 MOOD_OPTIONS = [
     MOOD_NOT_TONIGHT,
+    MOOD_MAYBE_LATER,
     MOOD_TENDERNESS,
     MOOD_CURIOUS,
     MOOD_NOVELTY,
@@ -242,7 +253,9 @@ MOOD_OPTIONS = [
 ]
 
 MOOD_LABELS = {
-    MOOD_NOT_TONIGHT: "Pas ce soir",
+    MOOD_UNSET: "?",
+    MOOD_NOT_TONIGHT: "Pas aujourd'hui",
+    MOOD_MAYBE_LATER: "Peut-être plus tard",
     MOOD_TENDERNESS: "Envie de douceur",
     MOOD_CURIOUS: "Curieux(se)",
     MOOD_NOVELTY: "Envie de nouveauté",
@@ -251,7 +264,9 @@ MOOD_LABELS = {
 
 # Intensité de l'envie, de 0 (aucune) à 4 (maximale).
 MOOD_INTENSITY = {
+    MOOD_UNSET: 0,
     MOOD_NOT_TONIGHT: 0,
+    MOOD_MAYBE_LATER: 1,
     MOOD_TENDERNESS: 1,
     MOOD_CURIOUS: 2,
     MOOD_NOVELTY: 3,
@@ -259,7 +274,9 @@ MOOD_INTENSITY = {
 }
 
 MOOD_EMOJI = {
+    MOOD_UNSET: "❓😏",
     MOOD_NOT_TONIGHT: "😴",
+    MOOD_MAYBE_LATER: "🕒",
     MOOD_TENDERNESS: "💗",
     MOOD_CURIOUS: "😏",
     MOOD_NOVELTY: "✨",
