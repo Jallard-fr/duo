@@ -20,11 +20,25 @@ from .const import (
     DOMAIN,
     PHASE_LABELS,
     POSITION_LABELS,
+    SEX_FEMME,
+    SEX_HOMME,
     SEX_LABELS,
     SIGNAL_UPDATE,
     STATUS_IDLE,
 )
 from .coordinator import DuoCoordinator
+
+
+def _oral_label(sex: str | None) -> str:
+    """Libellé de l'acte oral selon le sexe de la personne qui le reçoit
+    (fellation pour un homme, cunnilingus pour une femme), générique sinon
+    — même logique que oralLabel() côté carte pour le questionnaire de
+    limites."""
+    if sex == SEX_HOMME:
+        return "une fellation"
+    if sex == SEX_FEMME:
+        return "un cunnilingus"
+    return "une stimulation orale"
 
 
 async def async_setup_entry(
@@ -113,16 +127,23 @@ class DuoSuggestionSensor(DuoEntityBase):
             accessory_label = None
 
         # Le nom réel des partenaires (déjà connu, voir CONF_PARTNER1/2) est
-        # substitué ici dans le titre et la description, pour personnaliser
-        # l'expérience sans jamais afficher les mots "acteur"/"récepteur" —
-        # ce vocabulaire technique reste interne (filtrage par sexe, etc.).
+        # substitué ici dans la description, pour personnaliser l'expérience
+        # sans jamais afficher les mots "acteur"/"récepteur" — ce vocabulaire
+        # technique reste interne (filtrage par sexe, etc.). Le titre reste
+        # le nom brut de l'activité : l'accessoire à utiliser, s'il y en a
+        # un, se retrouve dans le texte de la description, pas dans le titre.
         title = activity["name"]
-        if accessory_label:
-            title = f"{title} (avec {accessory_label})"
 
         description = activity["description"]
         if actor and receiver:
-            description = description.format(actor=actor, receiver=receiver)
+            description = description.format(
+                actor=actor,
+                receiver=receiver,
+                oral_on_receiver=_oral_label(self.coordinator.sex_of(receiver)),
+                oral_on_actor=_oral_label(self.coordinator.sex_of(actor)),
+            )
+        if accessory_label:
+            description = f"{description} (avec {accessory_label})"
 
         return {
             "status": self.coordinator.current_status,

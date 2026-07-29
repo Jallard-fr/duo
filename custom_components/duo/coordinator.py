@@ -561,23 +561,41 @@ class DuoCoordinator:
         )
         return answer == PRACTICE_ANSWER_NON and not self.brave_taboos(partner)
 
+    def _practice_entries(self, activity: dict) -> list[tuple[str, str]]:
+        """Normalise le(s) tag(s) practice d'une activité en une liste de
+        paires (practice, rôle de l'acteur), rôle valant "donne", "recoit"
+        ou "usage" (voir ``practices`` dans le docstring d'activities.py).
+        La forme courte ``practice=...`` reste supportée : elle équivaut à
+        un rôle "donne" pour l'acteur (ou "usage" pour PRACTICE_JOUETS,
+        symétrique)."""
+        practices = activity.get("practices")
+        if practices:
+            return practices
+        practice = activity.get("practice")
+        if not practice:
+            return []
+        role = "usage" if practice == PRACTICE_JOUETS else "donne"
+        return [(practice, role)]
+
     def _matches_practice_limits(self, activity: dict, actor: str, receiver: str) -> bool:
         """Un "non" au questionnaire de limites exclut l'activité
         correspondante (voir practice_* dans activities.py), sauf pour le
-        partenaire qui a activé "braver ses interdits"."""
-        practice = activity.get("practice")
-        if not practice:
-            return True
-        if practice == PRACTICE_JOUETS:
-            # Pratique symétrique : un "non" de l'un ou l'autre suffit à exclure.
-            return not (
-                self._practice_refused(actor, practice, "usage")
-                or self._practice_refused(receiver, practice, "usage")
-            )
-        return not (
-            self._practice_refused(actor, practice, "donne")
-            or self._practice_refused(receiver, practice, "recoit")
-        )
+        partenaire qui a activé "braver ses interdits". Chaque tag doit être
+        validé pour que l'activité reste proposée (logique ET)."""
+        for practice, actor_role in self._practice_entries(activity):
+            if actor_role == "usage":
+                # Pratique symétrique : un "non" de l'un ou l'autre suffit à exclure.
+                if self._practice_refused(actor, practice, "usage") or self._practice_refused(
+                    receiver, practice, "usage"
+                ):
+                    return False
+                continue
+            receiver_role = "recoit" if actor_role == "donne" else "donne"
+            if self._practice_refused(actor, practice, actor_role) or self._practice_refused(
+                receiver, practice, receiver_role
+            ):
+                return False
+        return True
 
     def _matches_phase(self, activity: dict, phase: str | None) -> bool:
         if not phase:

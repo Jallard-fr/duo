@@ -1,13 +1,15 @@
 """Suggestion catalog for the Duo integration.
 
-Every entry is intentionally written at a suggestive, non-graphic level.
-The application proposes a theme and a mood, never an explicit, step by
-step description of a sexual act. It is up to the couple to decide, in
-the moment and within the limits they set in their own profile, how far
-they want to take any given suggestion. No entry here describes, or is
-inspired by, a practice with a real physical health risk (breath play,
-choking, fisting, gagging...) — pleasure never comes at the cost of
-safety, and this catalog is not the place to instruct anything risky.
+Entries name a theme or an act plainly enough to match the couple's own
+"Questionnaire de limites" vocabulary (fellation, cunnilingus, doigtage,
+discipline légère, liens...) rather than staying deliberately vague about
+what's on offer — but never turn into a graphic, step-by-step technique
+guide. It is up to the couple to decide, in the moment and within the
+limits they set in their own profile, how far they want to take any given
+suggestion. No entry here describes, or is inspired by, a practice with a
+real physical health risk (breath play, choking, fisting, gagging...) —
+pleasure never comes at the cost of safety, and this catalog is not the
+place to instruct anything risky.
 
 Each activity carries:
 - ``actor_sex`` / ``receiver_sex`` (``homme``, ``femme`` or ``indifferent``):
@@ -20,15 +22,20 @@ Each activity carries:
   frontend can substitute the couple's real, configured first names
   instead of a generic "votre partenaire". The placeholders always follow
   the actor/receiver rule above — never assume the addressee is one or
-  the other, read the sentence's actual meaning.
+  the other, read the sentence's actual meaning. Two more placeholders,
+  ``{oral_on_receiver}`` and ``{oral_on_actor}``, are filled in by the
+  frontend with "une fellation", "un cunnilingus" or the generic "une
+  stimulation orale", picked from the sex of whichever of the two is
+  actually on the receiving end of that particular sentence (not always
+  the receiver — see the "active" tied-hands variants below).
 - ``accessory``: either ``None``, or a dict with a ``required`` flag plus
   either an ``id`` (one specific accessories.py entry) or a ``category``
   (any owned item from that whole accessory category — e.g. any vibrant
   toy, whichever one the couple actually owns). When ``required`` is True
   the activity is only proposed if the couple owns a matching accessory;
   when False it's merely preferred. Either way, the resolved accessory
-  name is folded into the displayed activity title by the frontend, not
-  shown as a separate line.
+  name is folded into the displayed description text by the frontend, not
+  the title.
 - ``position``: an optional generic staging cue (see POSITION_* in
   const.py — lying down, standing, kneeling...), never an act description.
 - ``phase``: which moment of the encounter the activity typically belongs
@@ -50,9 +57,15 @@ Each activity carries:
   practice, the receiver to "recoit" it (except PRACTICE_JOUETS, which is
   symmetric — "usage"). A "non" answer from either partner in the
   relevant role excludes the activity, unless that partner has enabled
-  "braver ses interdits". Only a handful of entries carry a tag today
-  (the ones with a concrete, already-non-graphic match); PRACTICE_ANAL in
-  particular has no tagged entry yet since nothing in this catalog is
+  "braver ses interdits".
+- ``practices``: like ``practice``, but for activities that need more than
+  one tag checked at once, or where the actor isn't always the one who
+  "donne". A list of ``(practice, role)`` pairs, ``role`` being ``"donne"``,
+  ``"recoit"`` or ``"usage"``. Used by the tied-hands "active" variants
+  below, where the tied partner is the one performing oral on the actor —
+  there, the oral tag is ``(PRACTICE_ORAL, "recoit")`` from the actor's own
+  point of view, alongside the restraint tag ``(PRACTICE_LIENS, "donne")``.
+  PRACTICE_ANAL has no tagged entry yet since nothing in this catalog is
   anal-specific — the couple's answer is still recorded for future use.
 """
 
@@ -79,6 +92,7 @@ from .const import (
     PRACTICE_JOUETS,
     PRACTICE_LIENS,
     PRACTICE_ORAL,
+    SEX_FEMME,
     SEX_HOMME,
     SEX_INDIFFERENT,
 )
@@ -105,6 +119,7 @@ def _activity(
     accessory: dict | None = None,
     position: str | None = None,
     practice: str | None = None,
+    practices: list[tuple[str, str]] | None = None,
     actor_sex: str = SEX_INDIFFERENT,
     receiver_sex: str = SEX_INDIFFERENT,
 ) -> dict:
@@ -142,6 +157,7 @@ def _activity(
         "accessory": accessory,
         "position": position,
         "practice": practice,
+        "practices": practices,
         "actor_sex": actor_sex,
         "receiver_sex": receiver_sex,
         **mode_fields,
@@ -338,10 +354,32 @@ ACTIVITIES = [
     ),
     _activity(
         "preliminaires_attention_bouche", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
-        "Attention particulière",
-        "{actor} explore avec la bouche les zones que {receiver} aime, au rythme de {receiver}.",
+        "Stimulation orale",
+        "{actor} fait {oral_on_receiver} à {receiver}, à son rythme et aussi longtemps que {receiver} le souhaite.",
         3, duration=3,
         practice=PRACTICE_ORAL,
+    ),
+    _activity(
+        "preliminaires_doigtage", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
+        "Doigtage",
+        "{actor} caresse et pénètre doucement {receiver} du bout des doigts, en s'adaptant à ses réactions.",
+        4, duration=3,
+        receiver_sex=SEX_FEMME,
+    ),
+    _activity(
+        "preliminaires_masturbation_manuelle", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
+        "Stimulation manuelle",
+        "{actor} stimule {receiver} avec la main, en variant le rythme et la pression selon ses réactions.",
+        4, duration=3,
+        receiver_sex=SEX_HOMME,
+    ),
+    _activity(
+        "preliminaires_stimulation_clitoridienne", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
+        "Stimulation clitoridienne",
+        "{actor} stimule le clitoris de {receiver} du bout des doigts ou avec l'accessoire vibrant choisi, en variant les mouvements (cercles, va-et-vient, petits carrés) selon ses préférences.",
+        4, duration=3,
+        receiver_sex=SEX_FEMME,
+        accessory=_accessory_category("vibrant", required=False),
     ),
     _activity(
         "preliminaires_nuque_epaules", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
@@ -497,6 +535,82 @@ ACTIVITIES = [
         4, duration=2,
         accessory=_accessory_id("menottes_douces", required=True),
         practice=PRACTICE_LIENS,
+    ),
+
+    # Les deux mises en scène ci-dessus déclinées avec un acte précis plutôt
+    # que de simples caresses : doigtage, stimulation manuelle, ou stimulation
+    # orale — dans un sens comme dans l'autre, puisque seules les mains sont
+    # immobilisées. Dans les variantes "actif", c'est {receiver} (mains
+    # liées) qui prend l'initiative avec la bouche sur {actor} : voir
+    # ``practices`` dans le docstring du module pour le rôle de consentement
+    # inversé que ça implique.
+    _activity(
+        "preliminaires_mains_liees_doigtage", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Mains liées, doigtage",
+        "Les mains de {receiver} sont liées mais mobiles, pendant que {actor} la caresse et la pénètre doucement du bout des doigts.",
+        4, duration=2,
+        accessory=_accessory_id("foulards", required=True),
+        practice=PRACTICE_LIENS,
+        receiver_sex=SEX_FEMME,
+    ),
+    _activity(
+        "preliminaires_mains_attachees_doigtage", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Mains attachées au lit, doigtage",
+        "{actor} attache doucement les mains de {receiver} à la tête de lit, puis la caresse et la pénètre du bout des doigts.",
+        5, duration=2,
+        accessory=_accessory_id("menottes_douces", required=True),
+        practice=PRACTICE_LIENS,
+        receiver_sex=SEX_FEMME,
+    ),
+    _activity(
+        "preliminaires_mains_liees_masturbation", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Mains liées, stimulation manuelle",
+        "Les mains de {receiver} sont liées mais mobiles, pendant que {actor} le stimule avec la main.",
+        4, duration=2,
+        accessory=_accessory_id("foulards", required=True),
+        practice=PRACTICE_LIENS,
+        receiver_sex=SEX_HOMME,
+    ),
+    _activity(
+        "preliminaires_mains_attachees_masturbation", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Mains attachées au lit, stimulation manuelle",
+        "{actor} attache doucement les mains de {receiver} à la tête de lit, puis le stimule avec la main.",
+        5, duration=2,
+        accessory=_accessory_id("menottes_douces", required=True),
+        practice=PRACTICE_LIENS,
+        receiver_sex=SEX_HOMME,
+    ),
+    _activity(
+        "preliminaires_mains_liees_oral_passive", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Mains liées, stimulation orale reçue",
+        "Les mains de {receiver} sont liées mais mobiles, pendant que {actor} lui fait {oral_on_receiver}.",
+        4, duration=2,
+        accessory=_accessory_id("foulards", required=True),
+        practices=[(PRACTICE_LIENS, "donne"), (PRACTICE_ORAL, "donne")],
+    ),
+    _activity(
+        "preliminaires_mains_attachees_oral_passive", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Mains attachées au lit, stimulation orale reçue",
+        "{actor} attache doucement les mains de {receiver} à la tête de lit, puis lui fait {oral_on_receiver}.",
+        5, duration=2,
+        accessory=_accessory_id("menottes_douces", required=True),
+        practices=[(PRACTICE_LIENS, "donne"), (PRACTICE_ORAL, "donne")],
+    ),
+    _activity(
+        "preliminaires_mains_liees_oral_active", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Mains liées, stimulation orale offerte",
+        "Même mains liées, {receiver} prend l'initiative et fait {oral_on_actor} à {actor}.",
+        4, duration=2,
+        accessory=_accessory_id("foulards", required=True),
+        practices=[(PRACTICE_LIENS, "donne"), (PRACTICE_ORAL, "recoit")],
+    ),
+    _activity(
+        "preliminaires_mains_attachees_oral_active", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Mains attachées au lit, stimulation orale offerte",
+        "{actor} attache doucement les mains de {receiver} à la tête de lit ; même ainsi, {receiver} prend l'initiative et fait {oral_on_actor} à {actor}.",
+        5, duration=2,
+        accessory=_accessory_id("menottes_douces", required=True),
+        practices=[(PRACTICE_LIENS, "donne"), (PRACTICE_ORAL, "recoit")],
     ),
     _activity(
         "preliminaires_fouet_effleurement", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,

@@ -22,7 +22,8 @@ Duo est une intégration [Home Assistant](https://www.home-assistant.io/) + une 
 - **Chronomètre** intégré, avec une durée fixe (non aléatoire) propre à chaque activité, pour que le couple sache toujours à quoi s'attendre avant d'accepter — avec des bips sonores dans la carte (toutes les 30 s, puis un bip différent chaque seconde dans les 10 dernières secondes) — désactivables via le bouton 🔊/🔇 de la carte.
 - **Activités courtes** : chaque activité dure au maximum 3 minutes (souvent moins), ou est quantifiée en un nombre fixe d'actions plutôt qu'en temps (ex. "10 baisers", "20 mouvements de massage") — pour enchaîner sans que rien ne s'éternise et casser la routine.
 - **Personnalisation par prénom** : les descriptions d'activité utilisent directement les prénoms configurés du couple (ex. "Alice caresse Bob...") plutôt qu'une formule générique comme "votre partenaire". Les mots techniques "acteur"/"récepteur" ne sont eux jamais affichés dans la carte — ils restent un vocabulaire interne au filtrage par sexe.
-- **Accessoire intégré au titre** : quand une activité est associée à un accessoire (requis ou simplement conseillé), son nom apparaît directement dans le titre affiché (ex. "Massage à l'huile (avec Huile de massage)") plutôt que dans une ligne séparée.
+- **Accessoire mentionné dans le texte** : quand une activité est associée à un accessoire (requis ou simplement conseillé), son nom apparaît à la fin de la description affichée (ex. "... (avec Huile de massage)"), jamais dans le titre.
+- **Actes nommés explicitement** quand ils correspondent à une catégorie du questionnaire de limites (fellation/cunnilingus, doigtage, stimulation manuelle, stimulation clitoridienne) plutôt que de rester volontairement vagues — le libellé oral s'adapte automatiquement au sexe de la personne qui le reçoit. Les activités mains liées/attachées déclinent en plus ces actes selon que la personne aux mains liées les reçoit ou, mains liées mais bouche libre, les offre elle-même à son/sa partenaire.
 - **Positions génériques** : certaines activités de la phase Intense proposent une mise en scène (allongé, à quatre pattes, debout, assis, à genoux...), comme simple élément de variété, jamais associée à une description d'acte.
 - **Progression guidée par niveau (= phase)** : chaque partenaire doit faire accepter 3 activités de la phase en cours avant de passer automatiquement à la suivante (Excitation → Préliminaires → Intense → Résolution). En cas de refus, jusqu'à 4 nouvelles propositions sont faites automatiquement avant de laisser la main au couple.
 - **Mémoire du couple** : les activités déclinées sont mises "en pause" (14 jours par défaut) et ne sont proposées à nouveau automatiquement que si le partenaire concerné choisit explicitement l'humeur "Envie de nouveauté".
@@ -40,7 +41,7 @@ custom_components/duo/
   __init__.py            Point d'entrée, services, enregistrement automatique de la carte
   config_flow.py         Assistant de configuration (prénoms, sexe, consentement, personne HA)
   coordinator.py         État runtime, mémoire persistante, minuteur, notifications
-  activities.py          Catalogue des suggestions (78 activités, texte non graphique, durée ≤ 3 min ou comptage, position, sexe acteur/récepteur)
+  activities.py          Catalogue des suggestions (89 activités, texte non graphique, durée ≤ 3 min ou comptage, position, sexe acteur/récepteur)
   accessories.py         Catalogue prédéfini d'accessoires (seule source ; lu dynamiquement par la carte)
   sensor.py / select.py  Entités exposées (suggestion, minuteur, humeur, historique, soirée)
   services.yaml          Définition des services appelables
@@ -127,7 +128,7 @@ L'enregistrement de la carte est entièrement automatique : rien à ajouter à l
 
 ## Philosophie du contenu
 
-Toutes les suggestions du catalogue (`custom_components/duo/activities.py`, 78 entrées) sont écrites à un niveau **suggestif, catégoriel et non graphique**. Duo ne décrit jamais d'acte sexuel explicite : il propose une ambiance, une durée (3 minutes maximum, imposée par le code) ou un nombre d'actions, un thème, un ciblage acteur/récepteur, une phase et parfois une position générique, et laisse le couple libre de décider, ensemble et dans le respect de leurs limites, comment vivre le moment. Aucune activité n'est inspirée d'une pratique présentant un risque physique réel (étouffement, bâillonnement...) — la santé prime toujours sur la nouveauté.
+Toutes les suggestions du catalogue (`custom_components/duo/activities.py`, 89 entrées) sont écrites à un niveau **suggestif, catégoriel et non graphique**. Duo ne décrit jamais d'acte sexuel explicite : il propose une ambiance, une durée (3 minutes maximum, imposée par le code) ou un nombre d'actions, un thème, un ciblage acteur/récepteur, une phase et parfois une position générique, et laisse le couple libre de décider, ensemble et dans le respect de leurs limites, comment vivre le moment. Aucune activité n'est inspirée d'une pratique présentant un risque physique réel (étouffement, bâillonnement...) — la santé prime toujours sur la nouveauté.
 
 Le découpage en phases (`custom_components/duo/const.py`, `PHASE_*`) s'inspire de deux modèles de référence en sexologie — le modèle des phases de la réponse sexuelle de **Masters & Johnson** (*Human Sexual Response*, 1966) et le modèle triphasique de **Helen Singer Kaplan** (1979), qui a mis en avant la phase de désir en amont — adaptés à un découpage pratique en 4 étapes concrètes :
 
