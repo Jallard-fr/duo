@@ -32,6 +32,7 @@ Duo est une intégration [Home Assistant](https://www.home-assistant.io/) + une 
 - **Réinitialisation automatique à minuit** des humeurs du soir.
 - **Historique** des dernières sessions (activité, réponse, tour).
 - **Catalogue étoffé de caresses** (phases Excitation et Préliminaires) : les mêmes zones érogènes (oreilles, cou, torse, bas du dos, intérieur des cuisses, nombril, creux des genoux, cuir chevelu...) déclinées selon la méthode — main, bouche, souffle léger ou objet effleurant (plume, foulard) — plus des mises en scène combinables via les accessoires déjà existants : yeux bandés, mains liées mais mobiles, mains attachées à la tête de lit, ou effleurement au petit fouet léger (jamais un coup porté). Complété côté Excitation par des gages coquins, un mot glissé à l'oreille, un regard soutenu, une danse collée et un compte à rebours coquin.
+- **Génération combinatoire des caresses** : 12 zones érogènes × 8 méthodes (caresse, baiser, coup de langue, souffle, morsure légère, titillation, pincement léger, effleurement d'un objet) × 3 états de contrainte (libre, mains liées mais mobiles, mains attachées à un point fixe) × bandeau ou non sont générés à partir de quelques tableaux dans `activities.py` plutôt que tapés à la main un par un — près de 600 variantes supplémentaires, pour que le tirage aléatoire varie beaucoup plus souvent sans jamais dépasser le niveau non graphique du reste du catalogue.
 - **Lingerie déclarée par une partenaire** : une partenaire de sexe femme dispose d'un bouton « J'ai enfilé une petite tenue » dans la section "Ce soir", pour indiquer laquelle des pièces de lingerie possédées par le couple elle porte. Tant que c'est déclaré : aucune activité d'habillage (ex. « Habillage sur mesure ») n'est reproposée pour son tour, et l'autre partenaire reçoit un message de notification qui varie selon la combinaison exacte choisie (lingerie fine, déguisement sexy, masque, ou une combinaison des trois).
 
 ## Architecture du dépôt
@@ -41,7 +42,7 @@ custom_components/duo/
   __init__.py            Point d'entrée, services, enregistrement automatique de la carte
   config_flow.py         Assistant de configuration (prénoms, sexe, consentement, personne HA)
   coordinator.py         État runtime, mémoire persistante, minuteur, notifications
-  activities.py          Catalogue des suggestions (89 activités, texte non graphique, durée ≤ 3 min ou comptage, position, sexe acteur/récepteur)
+  activities.py          Catalogue des suggestions (665 activités, texte non graphique, durée ≤ 3 min ou comptage, position, sexe acteur/récepteur)
   accessories.py         Catalogue prédéfini d'accessoires (seule source ; lu dynamiquement par la carte)
   sensor.py / select.py  Entités exposées (suggestion, minuteur, humeur, historique, soirée)
   services.yaml          Définition des services appelables
@@ -128,7 +129,7 @@ L'enregistrement de la carte est entièrement automatique : rien à ajouter à l
 
 ## Philosophie du contenu
 
-Toutes les suggestions du catalogue (`custom_components/duo/activities.py`, 89 entrées) sont écrites à un niveau **suggestif, catégoriel et non graphique**. Duo ne décrit jamais d'acte sexuel explicite : il propose une ambiance, une durée (3 minutes maximum, imposée par le code) ou un nombre d'actions, un thème, un ciblage acteur/récepteur, une phase et parfois une position générique, et laisse le couple libre de décider, ensemble et dans le respect de leurs limites, comment vivre le moment. Aucune activité n'est inspirée d'une pratique présentant un risque physique réel (étouffement, bâillonnement...) — la santé prime toujours sur la nouveauté.
+Toutes les suggestions du catalogue (`custom_components/duo/activities.py`, 665 entrées) sont écrites à un niveau **suggestif, catégoriel et non graphique**. Duo ne décrit jamais d'acte sexuel explicite : il propose une ambiance, une durée (3 minutes maximum, imposée par le code) ou un nombre d'actions, un thème, un ciblage acteur/récepteur, une phase et parfois une position générique, et laisse le couple libre de décider, ensemble et dans le respect de leurs limites, comment vivre le moment. Aucune activité n'est inspirée d'une pratique présentant un risque physique réel (étouffement, bâillonnement...) — la santé prime toujours sur la nouveauté.
 
 Le découpage en phases (`custom_components/duo/const.py`, `PHASE_*`) s'inspire de deux modèles de référence en sexologie — le modèle des phases de la réponse sexuelle de **Masters & Johnson** (*Human Sexual Response*, 1966) et le modèle triphasique de **Helen Singer Kaplan** (1979), qui a mis en avant la phase de désir en amont — adaptés à un découpage pratique en 4 étapes concrètes :
 

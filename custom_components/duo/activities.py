@@ -790,6 +790,129 @@ ACTIVITIES = [
     ),
 ]
 
+# ---------------------------------------------------------------------------
+# Variantes de caresses générées : plutôt que de retaper à la main chaque
+# combinaison zone × méthode × contrainte × bandeau, on les construit ici à
+# partir de quelques tableaux de données — le couple a explicitement demandé
+# de multiplier les combinaisons pour que le tirage aléatoire varie beaucoup
+# plus souvent. Chaque variante reste au même niveau que les entrées écrites
+# à la main ci-dessus (caresse, baiser, morsure légère, souffle, pincement
+# léger, effleurement d'un objet) ; seuls la zone et le contexte (mains
+# liées ou non, yeux bandés ou non) changent d'une variante à l'autre.
+# ---------------------------------------------------------------------------
+
+_CARESS_ZONES = [
+    ("oreilles", "les oreilles", "Oreilles"),
+    ("cou", "le cou", "Cou"),
+    ("poitrine", "la poitrine", "Poitrine"),
+    ("dos", "le bas du dos", "Bas du dos"),
+    ("cuisses", "l'intérieur des cuisses", "Intérieur des cuisses"),
+    ("ventre", "le ventre et le nombril", "Ventre"),
+    ("genoux", "le creux des genoux", "Creux des genoux"),
+    ("cuir_chevelu", "le cuir chevelu", "Cuir chevelu"),
+    ("levres", "les lèvres et le visage", "Lèvres et visage"),
+    ("fesses", "les fesses", "Fesses"),
+    ("mains", "les mains et les poignets", "Mains et poignets"),
+    ("pieds", "les pieds", "Pieds"),
+]
+
+# clé, catégorie, libellé pour le titre, gabarit ({zone} uniquement — les
+# accolades pour {actor}/{receiver} sont doublées pour survivre au
+# .format(zone=...) et rester substituables plus tard, côté sensor.py),
+# intensité de base, durée de base (minutes).
+_CARESS_METHODS = [
+    ("main", CATEGORY_PRELIMINAIRES, "Caresses",
+     "{{actor}} caresse {zone} de {{receiver}} avec les mains.", 2, 2),
+    ("bouche", CATEGORY_PRELIMINAIRES, "Baisers",
+     "{{actor}} embrasse {zone} de {{receiver}}.", 3, 2),
+    ("langue", CATEGORY_PRELIMINAIRES, "Coups de langue",
+     "{{actor}} lèche {zone} de {{receiver}} du bout de la langue.", 3, 2),
+    ("souffle", CATEGORY_SENSORIEL, "Souffle",
+     "{{actor}} souffle doucement sur {zone} de {{receiver}}.", 2, 1),
+    ("mordille", CATEGORY_SENSORIEL, "Petites morsures",
+     "{{actor}} mordille légèrement {zone} de {{receiver}}.", 3, 1),
+    ("titille", CATEGORY_SENSORIEL, "Titillations",
+     "{{actor}} titille {zone} de {{receiver}} du bout des doigts.", 2, 1),
+    ("pince", CATEGORY_SENSORIEL, "Pincements légers",
+     "{{actor}} pince délicatement {zone} de {{receiver}}.", 3, 1),
+    ("objet", CATEGORY_SENSORIEL, "Effleurement",
+     "{{actor}} effleure {zone} de {{receiver}} avec l'objet choisi.", 2, 2),
+]
+
+_RESTRAINTS = ["libre", "mobile", "fixe"]
+_RESTRAINT_LABELS = {"libre": None, "mobile": "mains liées", "fixe": "mains attachées"}
+
+
+def _restraint_intro(restraint: str, blindfold: bool) -> str:
+    """Phrase d'introduction posant le contexte (liens, bandeau) avant
+    l'action elle-même ; vide si ni l'un ni l'autre ne s'applique."""
+    if restraint == "mobile":
+        extra = " et les yeux bandés" if blindfold else ""
+        return "{receiver} a les mains liées mais mobiles" + extra + ", pendant que "
+    if restraint == "fixe":
+        extra = ", les yeux bandés," if blindfold else ""
+        return "{receiver} est attaché(e) à un point fixe" + extra + " pendant que "
+    if blindfold:
+        return "Les yeux bandés, {receiver} se laisse surprendre pendant que "
+    return ""
+
+
+def _restraint_accessory(restraint: str) -> dict | None:
+    if restraint == "mobile":
+        return _accessory_id("foulards", required=True)
+    if restraint == "fixe":
+        return _accessory_id("menottes_douces", required=True)
+    return None
+
+
+def _generate_caress_variants() -> list[dict]:
+    variants = []
+    for zone_key, zone_phrase, zone_title in _CARESS_ZONES:
+        for method_key, category, method_title, template, base_intensity, base_duration in _CARESS_METHODS:
+            action = template.format(zone=zone_phrase)
+            for restraint in _RESTRAINTS:
+                for blindfold in (False, True):
+                    description = _restraint_intro(restraint, blindfold) + action
+                    intensity = min(
+                        5, base_intensity + int(restraint != "libre") + int(blindfold)
+                    )
+                    duration = min(
+                        MAX_ACTIVITY_MINUTES,
+                        base_duration + (1 if restraint != "libre" else 0),
+                    )
+
+                    accessory = _restraint_accessory(restraint)
+                    if accessory is None and method_key == "objet":
+                        accessory = _accessory_id("plume", required=False)
+
+                    title_suffix = [
+                        label
+                        for label in (_RESTRAINT_LABELS[restraint], "yeux bandés" if blindfold else None)
+                        if label
+                    ]
+                    title = f"{method_title} : {zone_title}"
+                    if title_suffix:
+                        title += " (" + ", ".join(title_suffix) + ")"
+
+                    variants.append(
+                        _activity(
+                            f"caresse_{zone_key}_{method_key}_{restraint}_"
+                            f"{'bandeau' if blindfold else 'sans'}",
+                            category,
+                            PHASE_PRELIMINAIRES,
+                            title,
+                            description,
+                            intensity,
+                            duration=duration,
+                            accessory=accessory,
+                            practice=PRACTICE_LIENS if restraint != "libre" else None,
+                        )
+                    )
+    return variants
+
+
+ACTIVITIES += _generate_caress_variants()
+
 
 def get_activity(activity_id: str) -> dict | None:
     """Return the activity matching the given id, if any."""
