@@ -77,6 +77,7 @@ Duo tient le couple informé sans jamais forcer une conversation gênante :
 - ♀️♂️ Chaque activité et chaque accessoire connaît le sexe de qui agit et de qui reçoit (ou "indifférent") : seules les combinaisons compatibles avec le couple sont proposées.
 - 🪢 Les mises en scène (mains liées mais mobiles, mains attachées dans le dos ou à la tête de lit, yeux bandés) se combinent librement avec les caresses, les actes précis et les positions — chaque variante existe aussi bien "libre" qu'"attachée".
 - 💃 En phase Intense, les tours 3 et 4 proposent de vraies **positions du Kama Sutra et du tantra** (Missionnaire, Levrette, Andromaque/la Cavalière, Cow-girl inversée, Yab-Yum, Cuillères, debout contre un mur, penché·e sur un meuble, l'Ancre...) avec leur nom réel et une explication de leur mise en place — un mélange volontaire où la femme est tantôt meneuse (au-dessus), tantôt receveuse (en dessous ou penchée), toujours dans le respect des limites de postures fixées par le couple.
+- ℹ️ Un petit bouton **info-bulle** apparaît à côté de ces noms de position (dans la suggestion en cours comme dans l'historique) : un survol (ordinateur) ou un tap (téléphone) affiche une explication courte du terme, sans avoir à connaître le Kama Sutra par cœur.
 
 ### 🎨 Ambiance de la carte
 

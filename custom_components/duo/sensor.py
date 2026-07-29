@@ -195,6 +195,7 @@ class DuoSuggestionSensor(DuoEntityBase):
         return {
             "status": self.coordinator.current_status,
             "turn": actor,
+            "activity_id": activity["id"],
             "title": title,
             "category": CATEGORY_LABELS.get(activity["category"], activity["category"]),
             "phase": phase,

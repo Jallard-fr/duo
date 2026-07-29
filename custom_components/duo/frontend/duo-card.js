@@ -156,6 +156,31 @@ const POSITION_QUESTIONS = [
   ["position_genoux", "À genoux", "en étant à genoux"],
 ];
 
+// Petit glossaire pour les positions nommées (Kama Sutra, tantra) proposées
+// en phase Intense (voir _generate_kamasutra_positions dans activities.py) :
+// leur nom seul ne parle pas forcément à tout le monde ("Andromaque",
+// "Yab-Yum"...), d'où une explication courte accessible via une info-bulle
+// (voir glossaryKeyFor / _renderGlossaryBadge), en complément — pas en
+// remplacement — de la description complète déjà affichée sous la
+// suggestion. Clé = préfixe de l'identifiant d'activité (activity_id).
+const POSITION_GLOSSARY = [
+  ["intense_position_missionnaire", "Missionnaire", "Position allongée face à face, l'un au-dessus de l'autre — la plus classique."],
+  ["intense_position_levrette", "Levrette", "Le/la partenaire est à quatre pattes, pénétré·e par-derrière."],
+  ["intense_position_cowgirl_inversee", "Cow-girl inversée", "Comme la Cavalière, mais dos tourné vers le visage du ou de la partenaire allongé·e."],
+  ["intense_position_andromaque", "Andromaque (la Cavalière)", "La femme est assise au-dessus de son ou sa partenaire allongé·e et mène le rythme."],
+  ["intense_position_yab_yum", "Yab-Yum", "Position tantrique assise, face à face, jambes entrelacées, pour un maximum de proximité."],
+  ["intense_position_cuilleres", "Cuillères", "Les deux partenaires allongés sur le côté, blottis l'un contre l'autre."],
+  ["intense_position_debout_mur", "Debout contre un mur", "Les deux partenaires debout, face à face, contre un mur."],
+  ["intense_position_penche_meuble", "Penché·e sur un meuble", "Variante de la Levrette, penché·e en avant, appuyé·e sur un meuble ou le lit."],
+  ["intense_position_ancre", "L'Ancre", "Allongé·e sur le dos, jambes posées sur les épaules du ou de la partenaire agenouillé·e, pour une pénétration plus profonde."],
+];
+
+function glossaryFor(activityId) {
+  if (!activityId) return null;
+  const entry = POSITION_GLOSSARY.find(([prefix]) => activityId.startsWith(prefix));
+  return entry ? { key: entry[0], term: entry[1], definition: entry[2] } : null;
+}
+
 // Catalogue d'accessoires : lu dynamiquement depuis les attributs de
 // l'entité "soirée" (accessory_catalog / accessory_categories), exposés par
 // l'intégration à partir de custom_components/duo/accessories.py, qui reste
@@ -383,6 +408,7 @@ class DuoCard extends HTMLElement {
     this._detailsOpen = this._detailsOpen || {};
     this._quiz = this._quiz || { open: false, kind: null, stepIndex: -1, partner: null, answers: {} };
     this._lingerieDraft = this._lingerieDraft || { open: false, partner: null, items: [] };
+    this._openGlossaryKey = this._openGlossaryKey || null;
     if (!this._root) {
       this._root = this.attachShadow({ mode: "open" });
     }
@@ -610,6 +636,23 @@ class DuoCard extends HTMLElement {
     const cfg = this._config;
     const entity = cfg.evening_entity ? this._hass.states[cfg.evening_entity] : null;
     return (entity && entity.attributes && entity.attributes.partner_sex) || {};
+  }
+
+  // Info-bulle pour les termes qui ne parlent pas d'eux-mêmes (positions
+  // nommées type Kama Sutra/tantra — voir POSITION_GLOSSARY). Le bouton
+  // porte un `title` natif (survol sur ordinateur) et, au clic, ouvre une
+  // petite note repliable juste en dessous — plus fiable qu'un survol sur
+  // téléphone. this._openGlossaryKey garde une seule note ouverte à la fois.
+  _renderGlossaryBadge(activityId) {
+    const entry = glossaryFor(activityId);
+    if (!entry) return "";
+    return ` <button class="glossary-btn" data-glossary-key="${esc(entry.key)}" title="${esc(entry.definition)}" aria-label="Qu'est-ce que ${esc(entry.term)} ?">ⓘ</button>`;
+  }
+
+  _renderGlossaryNote(activityId) {
+    const entry = glossaryFor(activityId);
+    if (!entry || this._openGlossaryKey !== entry.key) return "";
+    return `<div class="glossary-note">${esc(entry.term)} : ${esc(entry.definition)}</div>`;
   }
 
   _renderQuizLauncher() {
@@ -1107,6 +1150,17 @@ class DuoCard extends HTMLElement {
         }
         .suggestion-name { font-size: 1.1em; font-weight: 700; margin-bottom: 4px; }
         .suggestion-desc { opacity: 0.85; margin-bottom: 8px; }
+        .glossary-btn {
+          background: none; border: 1px solid var(--divider-color, #ccc); border-radius: 50%;
+          width: 1.3em; height: 1.3em; line-height: 1; padding: 0; margin-left: 2px;
+          font-size: 0.85em; cursor: pointer; color: var(--primary-color, #e91e63);
+          vertical-align: middle;
+        }
+        .glossary-note {
+          font-size: 0.85em; opacity: 0.85; font-style: italic;
+          border-left: 3px solid var(--primary-color, #e91e63);
+          padding: 4px 8px; margin: 0 0 8px 0;
+        }
         .meta { font-size: 0.85em; opacity: 0.7; margin-bottom: 8px; }
         .turn-hint {
           font-size: 0.9em; font-weight: 600; margin-bottom: 8px;
@@ -1174,7 +1228,8 @@ class DuoCard extends HTMLElement {
             suggestion && suggestion.attributes.description
               ? `
             <div class="suggestion-box">
-              <div class="suggestion-name">${esc(suggestion.attributes.title || suggestion.state)}</div>
+              <div class="suggestion-name">${esc(suggestion.attributes.title || suggestion.state)}${this._renderGlossaryBadge(suggestion.attributes.activity_id)}</div>
+              ${this._renderGlossaryNote(suggestion.attributes.activity_id)}
               <div class="suggestion-desc">${esc(suggestion.attributes.description)}</div>
               <div class="meta">
                 Intensité : ${"♥".repeat(suggestion.attributes.intensity || 0)}${"♡".repeat(5 - (suggestion.attributes.intensity || 0))}
@@ -1298,7 +1353,7 @@ class DuoCard extends HTMLElement {
               .reverse()
               .map(
                 (h) =>
-                  `<div class="history-item">${h.turn || "-"} · ${h.name} · ${h.response}</div>`
+                  `<div class="history-item">${esc(h.turn || "-")} · ${esc(h.name)} · ${esc(h.response)}${this._renderGlossaryBadge(h.activity_id)}</div>${this._renderGlossaryNote(h.activity_id)}`
               )
               .join("")}
           </details>
@@ -1319,6 +1374,14 @@ class DuoCard extends HTMLElement {
     if (themePicker) {
       themePicker.addEventListener("change", () => this._setThemeKey(themePicker.value));
     }
+
+    root.querySelectorAll("[data-glossary-key]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.dataset.glossaryKey;
+        this._openGlossaryKey = this._openGlossaryKey === key ? null : key;
+        this._render();
+      });
+    });
 
     const prefsDetails = root.getElementById("prefsDetails");
     if (prefsDetails) {
