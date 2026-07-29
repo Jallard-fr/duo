@@ -67,13 +67,20 @@ Each activity carries:
   point of view, alongside the restraint tag ``(PRACTICE_LIENS, "donne")``.
   PRACTICE_ANAL has no tagged entry yet since nothing in this catalog is
   anal-specific — the couple's answer is still recorded for future use.
-- ``intense_stage``: ``None``, ``"early"`` or ``"late"`` — splits
-  ``phase_intense`` into the two-part, 4-tour progression described in
-  const.py (see PHASE_TARGET_COUNTS / INTENSE_TARGET_COUNT): "early" acts
-  (oral, doigtage intense, jouet vibrant) are only proposed on tours 1-2,
-  "late" acts (positions nommées) only on tours 3-4. ``None`` means the
-  activity isn't part of that progression and stays proposable throughout
-  the phase (e.g. la fessée légère).
+- ``intense_stage``: ``None``, ``"first"``, ``"early"`` or ``"late"`` —
+  splits ``phase_intense`` into the 4-tour progression described in
+  const.py (see PHASE_TARGET_COUNTS / INTENSE_TARGET_COUNT): ``"first"``
+  acts (doigtage intense) are only proposed on tour 1, ``"early"`` acts
+  (sexe oral, jouet vibrant, fessée légère) only on tours 1-2, ``"late"``
+  acts (positions nommées) only on tours 3-4. ``None`` means the activity
+  isn't part of that progression and stays proposable throughout the phase.
+- ``once_per_phase``: ``None``, or a group key (e.g. ``"oral"``,
+  ``"doigtage_intense"``, ``"fessee_intense"``) shared by every variant of
+  that act. Once one variant of a given group has been accepted for a
+  given receveur·se, on ``phase_preliminaires`` or ``phase_intense``, no
+  other activity of that same group is proposed again to that receveur·se
+  for the rest of that phase this session — a soft cap ("at most once"),
+  never a guarantee ("at least once"): nothing forces it to happen.
 """
 
 from .const import (
@@ -131,6 +138,7 @@ def _activity(
     actor_sex: str = SEX_INDIFFERENT,
     receiver_sex: str = SEX_INDIFFERENT,
     intense_stage: str | None = None,
+    once_per_phase: str | None = None,
 ) -> dict:
     if (duration is None) == (count is None):
         raise ValueError(f"{activity_id}: set exactly one of duration= or count=")
@@ -171,6 +179,7 @@ def _activity(
         "actor_sex": actor_sex,
         "receiver_sex": receiver_sex,
         "intense_stage": intense_stage,
+        "once_per_phase": once_per_phase,
         **mode_fields,
     }
 
@@ -1020,13 +1029,14 @@ def _generate_positioned_acts() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Intense, étape "early" (2 premiers tours, voir intense_stage dans
-# _activity() et DuoCoordinator._matches_intense_turn) : uniquement du sexe
-# oral et de la pénétration avec un jouet vibrant (vibromasseur,
-# godemichet...) — la phase Intense est volontairement limitée à ces deux
-# catégories plus les positions nommées (voir _generate_kamasutra_positions),
-# à l'exclusion de tout le reste (pas de doigtage seul, pas de caresse
-# légère, pas de fessée ou de liens sans pénétration). Déclinés selon la
+# Intense, début de phase (voir intense_stage dans _activity() et
+# DuoCoordinator._matches_intense_turn) : sexe oral et pénétration avec un
+# jouet vibrant sur les 2 premiers tours, plus le doigtage intense
+# limité au 1er tour et à une seule fois par receveur·se (voir
+# ``once_per_phase`` et DuoCoordinator._matches_once_cap) — rien de tout
+# cela n'est obligatoire, ce sont des options possibles, pas des passages
+# forcés. Le reste de la phase Intense se limite aux positions nommées avec
+# pénétration (voir _generate_kamasutra_positions). Déclinés selon la
 # contrainte et le bandeau comme le reste du catalogue. Chaque acte a deux
 # gabarits : ``template_no_intro`` nomme {receiver} lui-même (aucune intro
 # liens/bandeau ne l'a fait avant), ``template_with_intro`` ne le/la
@@ -1035,33 +1045,43 @@ def _generate_positioned_acts() -> list[dict]:
 # (voir la mise en garde sur {actor_ref}/{receiver_ref} en objet).
 #
 # clé, catégorie, titre, gabarit sans intro, gabarit avec intro, sexe du/de
-# la receveur·se, accessoire, pénétration ?, sexe oral ?
+# la receveur·se, accessoire, pénétration ?, sexe oral ?, intense_stage,
+# groupe once_per_phase (None si non plafonné, ex. le sexe oral est
+# plafonné implicitement via son tag PRACTICE_ORAL — voir
+# DuoCoordinator._once_per_phase_group).
 # ---------------------------------------------------------------------------
 _EARLY_INTENSE_ACTS = [
     (
         "oral", CATEGORY_INTENSITE_PLUS, "Stimulation orale intense",
         "{actor} fait {oral_on_receiver} à {receiver}, avec plus d'intensité et d'insistance qu'en préliminaires.",
         "{actor} passe à {oral_on_receiver}, avec plus d'intensité et d'insistance qu'en préliminaires.",
-        SEX_INDIFFERENT, None, False, True,
+        SEX_INDIFFERENT, None, False, True, "early", None,
+    ),
+    (
+        "doigtage", CATEGORY_INTENSITE_PLUS, "Doigtage intense",
+        "{actor} pénètre {receiver} avec les doigts, avec un rythme plus soutenu et plus profond.",
+        "{actor} intensifie la pénétration digitale, avec un rythme plus soutenu et plus profond.",
+        SEX_FEMME, None, True, False, "first", "doigtage_intense",
     ),
     (
         "jouet", CATEGORY_INTENSITE_PLUS, "Pénétration avec un jouet vibrant",
         "{actor} pénètre {receiver} avec le jouet vibrant choisi (vibromasseur, godemichet...), en augmentant progressivement l'intensité.",
         "{actor} insère le jouet vibrant choisi (vibromasseur, godemichet...) et augmente progressivement l'intensité.",
-        SEX_INDIFFERENT, _accessory_category("vibrant", required=True), True, False,
+        SEX_INDIFFERENT, _accessory_category("vibrant", required=True), True, False, "early", None,
     ),
 ]
 
 
 def _generate_early_intense_acts() -> list[dict]:
-    """Actes intenses (sexe oral, doigtage, jouet vibrant) proposés aux 2
-    premiers tours de la phase Intense, déclinés selon la contrainte et le
-    bandeau — voir le commentaire au-dessus de _EARLY_INTENSE_ACTS."""
+    """Actes de début de phase Intense (sexe oral, doigtage, jouet vibrant),
+    déclinés selon la contrainte et le bandeau — voir le commentaire
+    au-dessus de _EARLY_INTENSE_ACTS."""
     variants = []
     for (
         act_key, category, act_title,
         template_no_intro, template_with_intro,
         receiver_sex, accessory, penetration, is_oral,
+        intense_stage, once_per_phase,
     ) in _EARLY_INTENSE_ACTS:
         for restraint in _RESTRAINTS:
             for blindfold in (False, True):
@@ -1107,9 +1127,64 @@ def _generate_early_intense_acts() -> list[dict]:
                         practices=practices or None,
                         penetration=penetration,
                         receiver_sex=receiver_sex,
-                        intense_stage="early",
+                        intense_stage=intense_stage,
+                        once_per_phase=once_per_phase,
                     )
                 )
+    return variants
+
+
+# ---------------------------------------------------------------------------
+# Fessée légère déclinée selon la position de {receiver} (celle dans laquelle
+# iel la reçoit — voir le questionnaire de postures) et la contrainte. Reste
+# autorisée en phase Intense, mais uniquement sur les 2 premiers tours
+# (``intense_stage="early"``) et une seule fois par receveur·se sur toute la
+# phase (``once_per_phase="fessee_intense"``, voir
+# DuoCoordinator._matches_once_cap) — jamais obligatoire.
+# ---------------------------------------------------------------------------
+
+_FESSEE_ACTION = "{actor} donne une fessée légère à {receiver}, à l'intensité validée ensemble avant de commencer."
+
+
+def _generate_fessee_variants() -> list[dict]:
+    variants = []
+    for position in _POSITIONS_LIST:
+        # Assis·e, les fesses reposent sur le siège : pas de fessée possible
+        # dans cette position (même raison que pour les caresses).
+        if position == POSITION_ASSIS:
+            continue
+        for restraint in ("libre", "mobile"):
+            intro = _restraint_intro(restraint, blindfold=False)
+            stance = _stance_text(position, "{receiver_e}")
+            description = f"{intro}{_FESSEE_ACTION} {{receiver_ref_cap}} est {stance}."
+
+            practices = [(PRACTICE_DISCIPLINE, "donne")]
+            if restraint != "libre":
+                practices.append((PRACTICE_LIENS, "donne"))
+
+            accessory = _restraint_accessory(restraint) or _accessory_id("fouet_leger", required=False)
+
+            title = f"Fessée légère ({_POSITION_TITLES[position]}"
+            if restraint != "libre":
+                title += ", " + _RESTRAINT_LABELS[restraint]
+            title += ")"
+
+            variants.append(
+                _activity(
+                    f"fessee_{position}_{restraint}",
+                    CATEGORY_INTENSITE_PLUS,
+                    PHASE_INTENSE,
+                    title,
+                    description,
+                    4,
+                    duration=1,
+                    accessory=accessory,
+                    practices=practices,
+                    position=position,
+                    intense_stage="early",
+                    once_per_phase="fessee_intense",
+                )
+            )
     return variants
 
 
@@ -1255,6 +1330,7 @@ ACTIVITIES += (
     _generate_caress_variants()
     + _generate_positioned_acts()
     + _generate_early_intense_acts()
+    + _generate_fessee_variants()
     + _generate_kamasutra_positions()
 )
 

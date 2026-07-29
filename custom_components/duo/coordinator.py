@@ -132,11 +132,13 @@ class DuoCoordinator:
         # pénétration (voir _matches_preliminaires_turn et
         # async_request_suggestion).
         self._preliminaires_penetration_done: dict[str, bool] = {}
-        # {phase: {receveur·se déjà servi·e}} — la fellation et le
-        # cunnilingus ne sont proposés qu'une seule fois par receveur·se sur
-        # les phases Préliminaires et Intense (voir _matches_oral_cap et
-        # _register_oral_cap), pas à chaque tour.
-        self._oral_done_by_phase: dict[str, set[str]] = {}
+        # {(phase, groupe): {receveur·se déjà servi·e}} — un acte "à usage
+        # unique" (sexe oral, doigtage intense, fessée...) n'est proposé
+        # qu'une seule fois par receveur·se sur les phases Préliminaires et
+        # Intense, jamais à chaque tour, mais rien ne force qu'il arrive
+        # (voir _once_per_phase_group, _matches_once_cap et
+        # _register_once_cap).
+        self._once_done_by_phase: dict[tuple[str, str], set[str]] = {}
 
     @property
     def partners(self) -> list[str]:
@@ -640,7 +642,7 @@ class DuoCoordinator:
         self.session_phase = PHASE_EXCITATION
         self.phase_progress = {}
         self._preliminaires_penetration_done = {}
-        self._oral_done_by_phase = {}
+        self._once_done_by_phase = {}
         await self.async_reset_session()
         _LOGGER.debug("Duo : humeurs réinitialisées (minuit)")
 
@@ -821,12 +823,12 @@ class DuoCoordinator:
 
     def _matches_intense_turn(self, activity: dict, actor: str) -> bool:
         """Phase Intense uniquement, et seulement tant qu'elle est la phase
-        guidée en cours : les activités marquées ``intense_stage="early"``
-        (sexe oral, doigtage intense, jouet vibrant) ne sont proposées
-        qu'aux 2 premiers tours, celles marquées ``"late"`` (positions
-        nommées) qu'aux 2 derniers, sur INTENSE_TARGET_COUNT tours au total.
-        Une activité sans ``intense_stage`` n'est pas concernée par cette
-        règle."""
+        guidée en cours : les activités marquées ``intense_stage="first"``
+        (doigtage intense) ne sont proposées qu'au 1er tour, ``"early"``
+        (sexe oral, jouet vibrant, fessée légère) qu'aux 2 premiers tours,
+        ``"late"`` (positions nommées) qu'aux 2 derniers, sur
+        INTENSE_TARGET_COUNT tours au total. Une activité sans
+        ``intense_stage`` n'est pas concernée par cette règle."""
         stage = activity.get("intense_stage")
         if (
             not stage
@@ -836,20 +838,37 @@ class DuoCoordinator:
             return True
         target = self._target_count_for(PHASE_INTENSE)
         round_number = self.phase_progress.get(actor, 0) + 1
+        if stage == "first":
+            return round_number == 1
         if stage == "early":
             return round_number <= target - 2
         if stage == "late":
             return round_number > target - 2
         return True
 
-    def _matches_oral_cap(self, activity: dict, receiver: str) -> bool:
-        """La fellation et le cunnilingus ne sont proposés qu'une seule fois
-        par receveur·se sur les phases Préliminaires et Intense, pas à
-        chaque tour (voir _register_oral_cap, appelé à l'acceptation)."""
+    def _once_per_phase_group(self, activity: dict) -> str | None:
+        """Clé de regroupement pour le plafond "une fois maximum par
+        phase" (voir _matches_once_cap), ou None si l'activité n'y est pas
+        soumise. Le sexe oral est plafonné implicitement (groupe "oral") via
+        son tag PRACTICE_ORAL ; les autres actes plafonnés (doigtage
+        intense, fessée...) déclarent leur propre groupe via le champ
+        ``once_per_phase`` d'activities.py."""
+        if activity.get("once_per_phase"):
+            return activity["once_per_phase"]
+        if self._activity_is_oral(activity):
+            return "oral"
+        return None
+
+    def _matches_once_cap(self, activity: dict, receiver: str) -> bool:
+        """Un acte à usage unique (voir _once_per_phase_group) n'est proposé
+        qu'une seule fois par receveur·se sur les phases Préliminaires et
+        Intense, pas à chaque tour — un plafond, jamais une garantie (voir
+        _register_once_cap, appelé à l'acceptation)."""
         phase = activity.get("phase")
-        if phase not in (PHASE_PRELIMINAIRES, PHASE_INTENSE) or not self._activity_is_oral(activity):
+        group = self._once_per_phase_group(activity)
+        if phase not in (PHASE_PRELIMINAIRES, PHASE_INTENSE) or not group:
             return True
-        return receiver not in self._oral_done_by_phase.get(phase, set())
+        return receiver not in self._once_done_by_phase.get((phase, group), set())
 
     async def async_request_suggestion(
         self,
@@ -897,7 +916,7 @@ class DuoCoordinator:
                 and self._matches_lingerie_state(activity, turn)
                 and self._matches_preliminaires_turn(activity, turn)
                 and self._matches_intense_turn(activity, turn)
-                and self._matches_oral_cap(activity, proposer)
+                and self._matches_once_cap(activity, proposer)
                 and (self._matches_phase(activity, effective_phase) if with_phase else True)
             )
 
@@ -942,7 +961,7 @@ class DuoCoordinator:
             await self._async_log_history(activity, response)
             self._reroll_count = 0
             self._async_register_level_progress(activity)
-            self._register_oral_cap(activity)
+            self._register_once_cap(activity)
             await self.async_start_timer()
         else:
             self.current_status = STATUS_DECLINED
@@ -977,16 +996,18 @@ class DuoCoordinator:
         if all(self.phase_progress.get(p, 0) >= target for p in self.partners):
             self._advance_session_phase()
 
-    def _register_oral_cap(self, activity: dict) -> None:
-        """Marque le/la receveur·se comme déjà servi·e pour la phase de
-        cette activité, si elle est orale (voir _matches_oral_cap) —
-        indépendamment de la phase guidée en cours, contrairement à
+    def _register_once_cap(self, activity: dict) -> None:
+        """Marque le/la receveur·se comme déjà servi·e pour le groupe et la
+        phase de cette activité, si elle est plafonnée (voir
+        _once_per_phase_group et _matches_once_cap) — indépendamment de la
+        phase guidée en cours, contrairement à
         _async_register_level_progress."""
         phase = activity.get("phase")
-        if phase not in (PHASE_PRELIMINAIRES, PHASE_INTENSE) or not self._activity_is_oral(activity):
+        group = self._once_per_phase_group(activity)
+        if phase not in (PHASE_PRELIMINAIRES, PHASE_INTENSE) or not group:
             return
         receiver = self.other_partner(self.current_turn)
-        self._oral_done_by_phase.setdefault(phase, set()).add(receiver)
+        self._once_done_by_phase.setdefault((phase, group), set()).add(receiver)
 
     def _advance_session_phase(self) -> None:
         try:
@@ -1099,7 +1120,7 @@ class DuoCoordinator:
             self.profile["practice_limits"][partner] = {}
         self.session_phase = PHASE_EXCITATION
         self.phase_progress = {}
-        self._oral_done_by_phase = {}
+        self._once_done_by_phase = {}
         await self.async_save()
         await self.async_reset_session()
 

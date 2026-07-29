@@ -33,7 +33,7 @@ Le jeu suit une progression guidée en 4 étapes, comme une montée en températ
 |---|---|
 | 🌙 **Excitation** | Encore habillés, on commence à se stimuler (ex. une tenue sexy) |
 | 💋 **Préliminaires** | Contacts avec les zones érogènes : baisers, caresses des doigts ou de la bouche |
-| 🔥 **Intense** | Uniquement de la pénétration : positions nommées, jouet vibrant, ou sexe oral en tout début de phase |
+| 🔥 **Intense** | Positions nommées, jouet vibrant, sexe oral ou fessée en début de phase, doigtage une fois au 1er tour |
 | 🌊 **Résolution** | Retour au calme, tendresse après le rapport |
 
 - 🥉🥈🥇 Chaque partenaire doit se faire accepter un nombre d'activités dans la phase en cours avant de passer automatiquement à la suivante : **3 tours** pour Excitation/Résolution.
@@ -41,10 +41,11 @@ Le jeu suit une progression guidée en 4 étapes, comme une montée en températ
   - le 🗣️ sexe oral n'apparaît qu'à partir du **3ᵉ tour** ;
   - la 👉 pénétration (doigtage, jouet) n'apparaît qu'aux **2 derniers tours (4 et 5)** — et elle est **garantie** : si elle n'est encore jamais arrivée au tour 5, Duo la force plutôt que de la laisser au hasard ;
   - l'intensité (en petits cœurs ♥) grimpe elle aussi crescendo, dans une fenêtre de 3 cœurs qui ne bouge que d'un cran par tour (ex. seulement 1 à 3 cœurs au 2ᵉ tour).
-- 🔥 **Intense en compte 4**, et ne propose que de la pénétration, en deux étapes :
-  - les 🧊 tours 1 et 2 proposent du sexe oral (toujours avant la pénétration à venir) ou une pénétration avec un jouet vibrant (vibromasseur, godemichet...) ;
+- 🔥 **Intense en compte 4**, et ne propose que de la pénétration (positions, jouet), du sexe oral ou une fessée, en deux étapes :
+  - le 🖐️ tour 1, en plus, peut proposer un doigtage intense — une seule fois maximum, jamais obligatoire ;
+  - les 🧊 tours 1 et 2 proposent du sexe oral (toujours avant la pénétration à venir), une pénétration avec un jouet vibrant (vibromasseur, godemichet...) ou une fessée légère ;
   - les 🌀 tours 3 et 4 proposent des **positions nommées** (Missionnaire, Levrette, Andromaque, Yab-Yum...), avec leur vrai nom et une explication de leur mise en place — voir plus bas.
-- 🗣️ **Fellation et cunnilingus sont rationnés** : chacun n'est proposé qu'**une seule fois par personne** sur toute la phase Préliminaires, et à nouveau une seule fois sur toute la phase Intense — jamais répété en boucle.
+- 🗣️ **Fellation, cunnilingus et doigtage intense sont rationnés** : chacun n'est proposé qu'**une seule fois par personne** sur toute la phase Préliminaires, et à nouveau une seule fois sur toute la phase Intense — jamais répété en boucle, et jamais obligatoire non plus (juste un plafond, pas une garantie).
 - ⏭️⏮️ **Deux boutons**, chacun affichant le nom de la phase visée, permettent de sauter directement en avant ou en arrière si le couple préfère reprendre la main plutôt que de suivre la progression automatique.
 
 ### 📋 Les questionnaires et les curseurs
@@ -89,7 +90,7 @@ custom_components/duo/
                           écoute des actions de notification mobile
   config_flow.py          Assistant de configuration (prénoms, sexe, consentement, personne HA)
   coordinator.py          État runtime, mémoire persistante, minuteur, notifications
-  activities.py            Catalogue des suggestions (4328 activités, texte non graphique,
+  activities.py            Catalogue des suggestions (4344 activités, texte non graphique,
                           durée ≤ 3 min ou comptage, position, sexe acteur/récepteur)
   accessories.py           Catalogue prédéfini d'accessoires (seule source ; lu dynamiquement par la carte)
   sensor.py / select.py   Entités exposées (suggestion, minuteur, humeur, historique, soirée)
@@ -195,7 +196,7 @@ Les notifications de changement d'humeur (`_async_notify_partner` dans `coordina
 
 ### Philosophie du contenu
 
-Toutes les suggestions du catalogue (`custom_components/duo/activities.py`, 4328 entrées) sont écrites à un niveau **suggestif, catégoriel et non graphique** — y compris les positions nommées (Kama Sutra, tantra) : leur nom réel est donné et leur mise en place expliquée, jamais le déroulé de l'acte lui-même. Duo ne décrit jamais d'acte sexuel explicite : il propose une ambiance, une durée (3 minutes maximum, imposée par le code) ou un nombre d'actions, un thème, un ciblage acteur/récepteur, une phase et parfois une position générique, et laisse le couple libre de décider, ensemble et dans le respect de leurs limites, comment vivre le moment. Aucune activité n'est inspirée d'une pratique présentant un risque physique réel (étouffement, bâillonnement...) — la santé prime toujours sur la nouveauté.
+Toutes les suggestions du catalogue (`custom_components/duo/activities.py`, 4344 entrées) sont écrites à un niveau **suggestif, catégoriel et non graphique** — y compris les positions nommées (Kama Sutra, tantra) : leur nom réel est donné et leur mise en place expliquée, jamais le déroulé de l'acte lui-même. Duo ne décrit jamais d'acte sexuel explicite : il propose une ambiance, une durée (3 minutes maximum, imposée par le code) ou un nombre d'actions, un thème, un ciblage acteur/récepteur, une phase et parfois une position générique, et laisse le couple libre de décider, ensemble et dans le respect de leurs limites, comment vivre le moment. Aucune activité n'est inspirée d'une pratique présentant un risque physique réel (étouffement, bâillonnement...) — la santé prime toujours sur la nouveauté.
 
 La majorité du catalogue (`_generate_caress_variants`, `_generate_positioned_acts`, `_generate_early_intense_acts`, `_generate_kamasutra_positions`, `_generate_intense_fesses_variants`, `_generate_fessee_variants` dans `activities.py`) est **générée à partir de quelques tableaux de données** (zones érogènes, méthodes de caresse, états de contrainte, positions) plutôt que tapée à la main entrée par entrée — ce qui permet au tirage aléatoire de varier beaucoup plus souvent sans jamais dépasser le niveau non graphique du reste du catalogue, tout en gardant le code source compact et maintenable.
 
