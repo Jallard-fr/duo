@@ -945,6 +945,10 @@ def _generate_caress_variants() -> list[dict]:
                     else:
                         action = f"{{actor}} {verb} {zone_article} de {{receiver}}{trailing}."
                     for position_const, position_title, position_clause in _CARESS_POSITIONS:
+                        # Assis·e, les fesses reposent sur le siège : pas de
+                        # caresse possible dessus dans cette position.
+                        if zone_key == "fesses" and position_const == POSITION_ASSIS:
+                            continue
                         intro = _restraint_intro(restraint, blindfold, position_const)
                         description = intro + action
                         if position_clause:
@@ -1124,6 +1128,10 @@ _FESSEE_ACTION = "{actor} donne une fessée légère à {receiver}, à l'intensi
 def _generate_fessee_variants() -> list[dict]:
     variants = []
     for position in _POSITIONS_LIST:
+        # Assis·e, les fesses reposent sur le siège : pas de fessée possible
+        # dans cette position (même raison que pour les caresses).
+        if position == POSITION_ASSIS:
+            continue
         for restraint in ("libre", "mobile"):
             intro = _restraint_intro(restraint, blindfold=False)
             stance = _stance_text(position, "{receiver_e}")

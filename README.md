@@ -20,7 +20,7 @@ Duo, c'est un jeu à deux, jamais un ordre à exécuter :
 ### 🎲 Comment tourne une soirée : générer une suggestion
 
 1. 🎯 Depuis la carte, on appuie sur **« Proposer une activité »** (ou on choisit une phase précise dans le menu déroulant juste au-dessus).
-2. 🃏 Duo tire au sort une activité dans son catalogue (plus de 4 600 combinaisons !), pondérée selon les préférences, l'humeur du soir, le sexe de chacun et les accessoires réellement possédés — jamais totalement au hasard, toujours adaptée au couple.
+2. 🃏 Duo tire au sort une activité dans son catalogue (plus de 4 500 combinaisons !), pondérée selon les préférences, l'humeur du soir, le sexe de chacun et les accessoires réellement possédés — jamais totalement au hasard, toujours adaptée au couple.
 3. ✅ / ❌ Le partenaire dont c'est le tour **accepte** (le minuteur démarre tout seul) ou **décline** (une nouvelle suggestion arrive aussitôt, jusqu'à 4 relances).
 4. ⏱️ Le minuteur bipe toutes les 30 secondes, puis chaque seconde dans les 10 dernières — la durée est **toujours fixe et connue à l'avance** (jamais de surprise sur la longueur), sauf pour les activités comptées en actions ("X baisers") dont le nombre exact (entre 5 et 15) est tiré à chaque nouvelle proposition et affiché directement dans le texte.
 5. 💞 Les prénoms réels du couple remplacent "votre partenaire" dans chaque texte, avec le bon accord masculin/féminin — et sans jamais répéter deux fois le même prénom dans une phrase (un couple hétéro passe à "il"/"elle" à la deuxième mention).
@@ -84,7 +84,7 @@ custom_components/duo/
                           écoute des actions de notification mobile
   config_flow.py          Assistant de configuration (prénoms, sexe, consentement, personne HA)
   coordinator.py          État runtime, mémoire persistante, minuteur, notifications
-  activities.py            Catalogue des suggestions (4633 activités, texte non graphique,
+  activities.py            Catalogue des suggestions (4583 activités, texte non graphique,
                           durée ≤ 3 min ou comptage, position, sexe acteur/récepteur)
   accessories.py           Catalogue prédéfini d'accessoires (seule source ; lu dynamiquement par la carte)
   sensor.py / select.py   Entités exposées (suggestion, minuteur, humeur, historique, soirée)
@@ -190,7 +190,7 @@ Les notifications de changement d'humeur (`_async_notify_partner` dans `coordina
 
 ### Philosophie du contenu
 
-Toutes les suggestions du catalogue (`custom_components/duo/activities.py`, 4633 entrées) sont écrites à un niveau **suggestif, catégoriel et non graphique**. Duo ne décrit jamais d'acte sexuel explicite : il propose une ambiance, une durée (3 minutes maximum, imposée par le code) ou un nombre d'actions, un thème, un ciblage acteur/récepteur, une phase et parfois une position générique, et laisse le couple libre de décider, ensemble et dans le respect de leurs limites, comment vivre le moment. Aucune activité n'est inspirée d'une pratique présentant un risque physique réel (étouffement, bâillonnement...) — la santé prime toujours sur la nouveauté.
+Toutes les suggestions du catalogue (`custom_components/duo/activities.py`, 4583 entrées) sont écrites à un niveau **suggestif, catégoriel et non graphique**. Duo ne décrit jamais d'acte sexuel explicite : il propose une ambiance, une durée (3 minutes maximum, imposée par le code) ou un nombre d'actions, un thème, un ciblage acteur/récepteur, une phase et parfois une position générique, et laisse le couple libre de décider, ensemble et dans le respect de leurs limites, comment vivre le moment. Aucune activité n'est inspirée d'une pratique présentant un risque physique réel (étouffement, bâillonnement...) — la santé prime toujours sur la nouveauté.
 
 La majorité du catalogue (`_generate_caress_variants`, `_generate_positioned_acts`, `_generate_fessee_variants` dans `activities.py`) est **générée à partir de quelques tableaux de données** (zones érogènes, méthodes de caresse, états de contrainte, positions) plutôt que tapée à la main entrée par entrée — ce qui permet au tirage aléatoire de varier beaucoup plus souvent sans jamais dépasser le niveau non graphique du reste du catalogue, tout en gardant le code source compact et maintenable.
 
