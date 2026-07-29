@@ -222,6 +222,100 @@ set_lingerie:
       selector:
         object:
 
+set_position_limit:
+  name: Définir une limite de posture
+  description: >-
+    Enregistre la réponse d'un partenaire à une question du questionnaire de
+    postures : accepte-t-il/elle de RECEVOIR quelque chose (une caresse, une
+    fessée...) dans cette posture (allongé, à quatre pattes...). Chacun ne
+    peut définir que ses propres limites.
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
+    partner:
+      name: Partenaire
+      description: Prénom du partenaire qui répond.
+      required: true
+      selector:
+        text:
+    position:
+      name: Posture
+      description: Identifiant de la posture (voir POSITION_* dans const.py).
+      required: true
+      selector:
+        select:
+          options:
+            - position_allonge
+            - position_quatre_pattes
+            - position_penche_avant
+            - position_debout
+            - position_assis
+            - position_genoux
+    answer:
+      name: Réponse
+      description: oui, a_voir ou non. "non" exclut les activités dans cette posture.
+      required: true
+      selector:
+        select:
+          options:
+            - value: oui
+              label: Oui
+            - value: a_voir
+              label: À voir
+            - value: non
+              label: Non
+
+set_phase:
+  name: Changer de phase
+  description: >-
+    Passe directement à une phase précise de la progression guidée
+    (Excitation, Préliminaires, Intense, Résolution), en avant ou en
+    arrière. Réinitialise la progression de la phase (tours, pénétration
+    garantie) comme le ferait un passage automatique.
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
+    phase:
+      name: Phase
+      description: Phase cible.
+      required: true
+      selector:
+        select:
+          options:
+            - value: phase_excitation
+              label: Excitation
+            - value: phase_preliminaires
+              label: Préliminaires
+            - value: phase_intense
+              label: Intense
+            - value: phase_resolution
+              label: Résolution
+
+end_encounter:
+  name: Terminer le rapport
+  description: >-
+    Marque la soirée comme terminée : réinitialise l'engagement, l'humeur et
+    la session en cours des deux partenaires, une fois que le couple a
+    terminé.
+  fields:
+    entry_id:
+      name: Intégration
+      description: Identifiant de l'entrée de configuration Duo concernée.
+      required: true
+      selector:
+        config_entry:
+          integration: duo
+
 request_suggestion:
   name: Demander une suggestion
   description: >-

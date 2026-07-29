@@ -311,7 +311,7 @@ ACTIVITIES = [
     _activity(
         "preliminaires_caresses_guidees", CATEGORY_PRELIMINAIRES, PHASE_PRELIMINAIRES,
         "Caresses guidées",
-        "{receiver} guide la main de {actor} vers les endroits où {receiver} aimerait être touché(e) ce soir.",
+        "{receiver} guide la main de {actor} vers les endroits où {receiver_ref} aimerait être touché{receiver_e} ce soir.",
         2, duration=2,
     ),
     _activity(
@@ -633,6 +633,14 @@ ACTIVITIES = [
         accessory=_accessory_id("fouet_leger", required=True),
     ),
     _activity(
+        "preliminaires_fouet_surprise", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
+        "Fouet léger avec surprise",
+        "{actor} effleure la peau de {receiver} avec le petit fouet ; comme {receiver_ref} est partant{receiver_e} pour la discipline légère, {actor_ref} peut aussi y glisser un petit coup de temps en temps, pour surprendre.",
+        4, duration=2,
+        accessory=_accessory_id("fouet_leger", required=True),
+        practice=PRACTICE_DISCIPLINE,
+    ),
+    _activity(
         "preliminaires_liens_effleurement", CATEGORY_SENSORIEL, PHASE_PRELIMINAIRES,
         "Caresse en liens doux",
         "{actor} fait glisser un lien doux sur la peau de {receiver}, comme une caresse texturée, sans l'attacher.",
@@ -689,8 +697,8 @@ ACTIVITIES = [
     ),
     _activity(
         "intense_discipline_legere", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Discipline légère",
-        "{actor} ajoute, sur {receiver}, une touche de discipline légère avec l'accessoire choisi, à l'intensité validée ensemble avant de commencer.",
+        "Fessée légère",
+        "{actor} donne une fessée légère à {receiver}, à la main ou avec l'accessoire choisi, à l'intensité validée ensemble avant de commencer.",
         4, duration=1,
         accessory=_accessory_id("fouet_leger", required=False),
         practice=PRACTICE_DISCIPLINE,
@@ -727,7 +735,7 @@ ACTIVITIES = [
     ),
     _activity(
         "intense_position_allonge", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Position : allongé(e)",
+        "Position : allongé",
         "{actor} et {receiver} s'installent allongés, comme ils le sentent sur le moment.",
         4, duration=1, position=POSITION_ALLONGE,
     ),
@@ -739,8 +747,8 @@ ACTIVITIES = [
     ),
     _activity(
         "intense_position_penche_avant", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Position : penché(e) en avant",
-        "{actor} et {receiver} essaient la position penché(e) en avant, appuyé(e) sur le lit ou un meuble stable.",
+        "Position : penché en avant",
+        "{actor} et {receiver} essaient la position penchés en avant, appuyés sur le lit ou un meuble stable.",
         4, duration=1, position=POSITION_PENCHE_AVANT,
     ),
     _activity(
@@ -751,7 +759,7 @@ ACTIVITIES = [
     ),
     _activity(
         "intense_position_assis", CATEGORY_INTENSITE_PLUS, PHASE_INTENSE,
-        "Position : assis(e)",
+        "Position : assis",
         "{actor} et {receiver} essaient une position assise, sur une chaise ou le bord du lit.",
         4, duration=1, position=POSITION_ASSIS,
     ),
@@ -815,41 +823,35 @@ ACTIVITIES = [
 # ---------------------------------------------------------------------------
 
 _CARESS_ZONES = [
-    ("oreilles", "les oreilles", "Oreilles"),
-    ("cou", "le cou", "Cou"),
-    ("poitrine", "la poitrine", "Poitrine"),
-    ("dos", "le bas du dos", "Bas du dos"),
-    ("cuisses", "l'intérieur des cuisses", "Intérieur des cuisses"),
-    ("ventre", "le ventre et le nombril", "Ventre"),
-    ("genoux", "le creux des genoux", "Creux des genoux"),
-    ("cuir_chevelu", "le cuir chevelu", "Cuir chevelu"),
-    ("levres", "les lèvres et le visage", "Lèvres et visage"),
-    ("fesses", "les fesses", "Fesses"),
-    ("mains", "les mains et les poignets", "Mains et poignets"),
-    ("pieds", "les pieds", "Pieds"),
+    # clé, forme avec article (utilisée avec "de {receiver}"), forme
+    # possessive (utilisée quand {receiver} a déjà été nommé·e plus tôt
+    # dans la même description, pour ne pas répéter son prénom), titre.
+    ("oreilles", "les oreilles", "ses oreilles", "Oreilles"),
+    ("cou", "le cou", "son cou", "Cou"),
+    ("poitrine", "la poitrine", "sa poitrine", "Poitrine"),
+    ("dos", "le bas du dos", "son bas du dos", "Bas du dos"),
+    ("cuisses", "l'intérieur des cuisses", "l'intérieur de ses cuisses", "Intérieur des cuisses"),
+    ("ventre", "le ventre et le nombril", "son ventre et son nombril", "Ventre"),
+    ("genoux", "le creux des genoux", "le creux de ses genoux", "Creux des genoux"),
+    ("cuir_chevelu", "le cuir chevelu", "son cuir chevelu", "Cuir chevelu"),
+    ("levres", "les lèvres et le visage", "ses lèvres et son visage", "Lèvres et visage"),
+    ("fesses", "les fesses", "ses fesses", "Fesses"),
+    ("mains", "les mains et les poignets", "ses mains et ses poignets", "Mains et poignets"),
+    ("pieds", "les pieds", "ses pieds", "Pieds"),
 ]
 
-# clé, catégorie, libellé pour le titre, gabarit ({zone} uniquement — les
-# accolades pour {actor}/{receiver} sont doublées pour survivre au
-# .format(zone=...) et rester substituables plus tard, côté sensor.py),
-# intensité de base, durée de base (minutes).
+# clé, catégorie, libellé pour le titre, verbe (juste avant la zone),
+# complément final (après "de {receiver}"/la forme possessive, vide si
+# aucun), intensité de base, durée de base (minutes).
 _CARESS_METHODS = [
-    ("main", CATEGORY_PRELIMINAIRES, "Caresses",
-     "{{actor}} caresse {zone} de {{receiver}} avec les mains.", 2, 2),
-    ("bouche", CATEGORY_PRELIMINAIRES, "Baisers",
-     "{{actor}} embrasse {zone} de {{receiver}}.", 3, 2),
-    ("langue", CATEGORY_PRELIMINAIRES, "Coups de langue",
-     "{{actor}} lèche {zone} de {{receiver}} du bout de la langue.", 3, 2),
-    ("souffle", CATEGORY_SENSORIEL, "Souffle",
-     "{{actor}} souffle doucement sur {zone} de {{receiver}}.", 2, 1),
-    ("mordille", CATEGORY_SENSORIEL, "Petites morsures",
-     "{{actor}} mordille légèrement {zone} de {{receiver}}.", 3, 1),
-    ("titille", CATEGORY_SENSORIEL, "Titillations",
-     "{{actor}} titille {zone} de {{receiver}} du bout des doigts.", 2, 1),
-    ("pince", CATEGORY_SENSORIEL, "Pincements légers",
-     "{{actor}} pince délicatement {zone} de {{receiver}}.", 3, 1),
-    ("objet", CATEGORY_SENSORIEL, "Effleurement",
-     "{{actor}} effleure {zone} de {{receiver}} avec l'objet choisi.", 2, 2),
+    ("main", CATEGORY_PRELIMINAIRES, "Caresses", "caresse", " avec les mains", 2, 2),
+    ("bouche", CATEGORY_PRELIMINAIRES, "Baisers", "embrasse", "", 3, 2),
+    ("langue", CATEGORY_PRELIMINAIRES, "Coups de langue", "lèche", " du bout de la langue", 3, 2),
+    ("souffle", CATEGORY_SENSORIEL, "Souffle", "souffle doucement sur", "", 2, 1),
+    ("mordille", CATEGORY_SENSORIEL, "Petites morsures", "mordille légèrement", "", 3, 1),
+    ("titille", CATEGORY_SENSORIEL, "Titillations", "titille", " du bout des doigts", 2, 1),
+    ("pince", CATEGORY_SENSORIEL, "Pincements légers", "pince délicatement", "", 3, 1),
+    ("objet", CATEGORY_SENSORIEL, "Effleurement", "effleure", " avec l'objet choisi", 2, 2),
 ]
 
 _RESTRAINTS = ["libre", "mobile", "fixe"]
@@ -859,31 +861,41 @@ _RESTRAINT_LABELS = {"libre": None, "mobile": "mains liées", "fixe": "mains att
 # encore une dimension de variation, en plus de la contrainte et du bandeau
 # ci-dessus — le couple a explicitement demandé de multiplier au maximum les
 # combinaisons de positions. ``None`` = pas de position précisée (comme
-# avant l'ajout de cette dimension).
+# avant l'ajout de cette dimension). {receiver} a toujours déjà été nommé·e
+# plus tôt dans la description à ce stade : on utilise {receiver_ref} (un
+# pronom pour un couple hétérosexuel, sinon le prénom répété) plutôt que de
+# le/la renommer une deuxième fois, et {receiver_e} pour accorder l'adjectif
+# au féminin le cas échéant (plutôt que la notation "(e)").
 _CARESS_POSITIONS = [
     (None, None, None),
-    (POSITION_ALLONGE, "allongé", "{receiver} est allongé(e)."),
-    (POSITION_QUATRE_PATTES, "à quatre pattes", "{receiver} est à quatre pattes."),
+    (POSITION_ALLONGE, "allongé", "{receiver_ref} est allongé{receiver_e}."),
+    (POSITION_QUATRE_PATTES, "à quatre pattes", "{receiver_ref} est à quatre pattes."),
     (
         POSITION_PENCHE_AVANT,
         "penché",
-        "{receiver} est penché(e) en avant, appuyé(e) sur un meuble ou un mur.",
+        "{receiver_ref} est penché{receiver_e} en avant, appuyé{receiver_e} sur un meuble ou un mur.",
     ),
-    (POSITION_DEBOUT, "debout", "{receiver} est debout."),
-    (POSITION_ASSIS, "assis", "{receiver} est assis(e), sur une chaise ou le bord du lit."),
-    (POSITION_GENOUX, "à genoux", "{receiver} est à genoux."),
+    (POSITION_DEBOUT, "debout", "{receiver_ref} est debout."),
+    (
+        POSITION_ASSIS,
+        "assis",
+        "{receiver_ref} est assis{receiver_e}, sur une chaise ou le bord du lit.",
+    ),
+    (POSITION_GENOUX, "à genoux", "{receiver_ref} est à genoux."),
 ]
 
 
 def _restraint_intro(restraint: str, blindfold: bool) -> str:
     """Phrase d'introduction posant le contexte (liens, bandeau) avant
-    l'action elle-même ; vide si ni l'un ni l'autre ne s'applique."""
+    l'action elle-même ; vide si ni l'un ni l'autre ne s'applique. Nomme
+    {receiver} une seule fois : c'est toujours la première mention de la
+    description quand elle est présente."""
     if restraint == "mobile":
         extra = " et les yeux bandés" if blindfold else ""
         return "{receiver} a les mains liées mais mobiles" + extra + ", pendant que "
     if restraint == "fixe":
         extra = ", les yeux bandés," if blindfold else ""
-        return "{receiver} est attaché(e) à un point fixe" + extra + " pendant que "
+        return "{receiver} est attaché{receiver_e} à un point fixe" + extra + " pendant que "
     if blindfold:
         return "Les yeux bandés, {receiver} se laisse surprendre pendant que "
     return ""
@@ -899,13 +911,21 @@ def _restraint_accessory(restraint: str) -> dict | None:
 
 def _generate_caress_variants() -> list[dict]:
     variants = []
-    for zone_key, zone_phrase, zone_title in _CARESS_ZONES:
-        for method_key, category, method_title, template, base_intensity, base_duration in _CARESS_METHODS:
-            action = template.format(zone=zone_phrase)
+    for zone_key, zone_article, zone_possessive, zone_title in _CARESS_ZONES:
+        for method_key, category, method_title, verb, trailing, base_intensity, base_duration in _CARESS_METHODS:
             for restraint in _RESTRAINTS:
                 for blindfold in (False, True):
+                    intro = _restraint_intro(restraint, blindfold)
+                    # {receiver} n'est nommé·e qu'une fois : par l'intro
+                    # ci-dessus si elle existe, sinon par l'action elle-même
+                    # (qui utilise alors "de {receiver}" plutôt que la forme
+                    # possessive, qui suppose que le prénom est déjà connu).
+                    if intro:
+                        action = f"{{actor}} {verb} {zone_possessive}{trailing}."
+                    else:
+                        action = f"{{actor}} {verb} {zone_article} de {{receiver}}{trailing}."
                     for position_const, position_title, position_clause in _CARESS_POSITIONS:
-                        description = _restraint_intro(restraint, blindfold) + action
+                        description = intro + action
                         if position_clause:
                             description += " " + position_clause
                         intensity = min(
@@ -961,14 +981,24 @@ def _generate_caress_variants() -> list[dict]:
 # position partagée.
 # ---------------------------------------------------------------------------
 
-_POSITION_STANCE = {
-    POSITION_ALLONGE: "allongé(e)",
-    POSITION_QUATRE_PATTES: "à quatre pattes",
-    POSITION_PENCHE_AVANT: "penché(e) en avant, appuyé(e) sur un meuble ou un mur",
-    POSITION_DEBOUT: "debout",
-    POSITION_ASSIS: "assis(e), sur une chaise ou le bord du lit",
-    POSITION_GENOUX: "à genoux",
-}
+def _stance_text(position: str, e_placeholder: str) -> str:
+    """Texte de posture pour une personne donnée : ``e_placeholder`` est le
+    nom du placeholder d'accord féminin à utiliser pour CETTE personne
+    (``{actor_e}`` ou ``{receiver_e}``), substitué plus tard côté
+    sensor.py — jamais la notation "(e)"."""
+    stances = {
+        POSITION_ALLONGE: f"allongé{e_placeholder}",
+        POSITION_QUATRE_PATTES: "à quatre pattes",
+        POSITION_PENCHE_AVANT: (
+            f"penché{e_placeholder} en avant, appuyé{e_placeholder} sur un meuble ou un mur"
+        ),
+        POSITION_DEBOUT: "debout",
+        POSITION_ASSIS: f"assis{e_placeholder}, sur une chaise ou le bord du lit",
+        POSITION_GENOUX: "à genoux",
+    }
+    return stances[position]
+
+
 _POSITION_TITLES = {
     POSITION_ALLONGE: "allongé",
     POSITION_QUATRE_PATTES: "à quatre pattes",
@@ -987,8 +1017,9 @@ _POSITIONS_LIST = [
 ]
 
 # clé, catégorie, titre, gabarit (placeholders au premier degré : pas de
-# .format() intermédiaire ici, donc pas d'accolades à doubler), sexe du/de
-# la receveur·se, accessoire, pénétration ?, sexe oral ?
+# .format() intermédiaire ici, donc pas d'accolades à doubler ; {actor} et
+# {receiver} y sont chacun nommé·e une seule fois), sexe du/de la
+# receveur·se, accessoire, pénétration ?, sexe oral ?
 _POSITIONED_ACTS = [
     ("oral", CATEGORY_PRELIMINAIRES, "Stimulation orale",
      "{actor} fait {oral_on_receiver} à {receiver}.", SEX_INDIFFERENT, None, False, True),
@@ -1006,35 +1037,110 @@ _POSITIONED_ACTS = [
 
 
 def _generate_positioned_acts() -> list[dict]:
+    """Actes précis déclinés selon la position de chacun des deux
+    partenaires ET selon la contrainte (libre, mains liées mais mobiles,
+    attachées à un point fixe) — le couple a explicitement demandé de
+    vérifier que chaque acte existe aussi bien attaché que libre. La
+    position de {receiver} (celle dans laquelle iel reçoit l'acte) est
+    enregistrée dans le champ ``position``, pour le questionnaire de
+    postures ; celle de {actor} reste uniquement descriptive."""
     variants = []
     for act_key, category, act_title, template, receiver_sex, accessory, penetration, is_oral in _POSITIONED_ACTS:
         for actor_pos in _POSITIONS_LIST:
             for receiver_pos in _POSITIONS_LIST:
-                description = (
-                    template
-                    + " {actor} est " + _POSITION_STANCE[actor_pos]
-                    + ", {receiver} est " + _POSITION_STANCE[receiver_pos] + "."
+                # {actor} et {receiver} sont déjà chacun nommé·e une fois par
+                # le gabarit de l'acte : la phrase de posture qui suit les
+                # désigne donc par pronom (ou de nouveau par leur prénom pour
+                # un couple de même sexe, voir _second_mention côté sensor).
+                actor_stance = _stance_text(actor_pos, "{actor_e}")
+                receiver_stance = _stance_text(receiver_pos, "{receiver_e}")
+                stance_sentence = (
+                    f" {{actor_ref}} est {actor_stance}, {{receiver_ref}} est {receiver_stance}."
                 )
-                title = f"{act_title} ({_POSITION_TITLES[actor_pos]} / {_POSITION_TITLES[receiver_pos]})"
-                variants.append(
-                    _activity(
-                        f"acte_{act_key}_{actor_pos}_{receiver_pos}",
-                        category,
-                        PHASE_PRELIMINAIRES,
-                        title,
-                        description,
-                        4,
-                        duration=2,
-                        accessory=accessory,
-                        practice=PRACTICE_ORAL if is_oral else None,
-                        penetration=penetration,
-                        receiver_sex=receiver_sex,
+                for restraint in _RESTRAINTS:
+                    intro = _restraint_intro(restraint, blindfold=False)
+                    description = intro + template + stance_sentence
+                    accessory_for_variant = accessory or _restraint_accessory(restraint)
+                    practices = []
+                    if restraint != "libre":
+                        practices.append((PRACTICE_LIENS, "donne"))
+                    if is_oral:
+                        practices.append((PRACTICE_ORAL, "donne"))
+
+                    title = f"{act_title} ({_POSITION_TITLES[actor_pos]} / {_POSITION_TITLES[receiver_pos]}"
+                    if restraint != "libre":
+                        title += ", " + _RESTRAINT_LABELS[restraint]
+                    title += ")"
+
+                    variants.append(
+                        _activity(
+                            f"acte_{act_key}_{actor_pos}_{receiver_pos}_{restraint}",
+                            category,
+                            PHASE_PRELIMINAIRES,
+                            title,
+                            description,
+                            4,
+                            duration=2,
+                            accessory=accessory_for_variant,
+                            practices=practices or None,
+                            penetration=penetration,
+                            receiver_sex=receiver_sex,
+                            position=receiver_pos,
+                        )
                     )
-                )
     return variants
 
 
-ACTIVITIES += _generate_caress_variants() + _generate_positioned_acts()
+# ---------------------------------------------------------------------------
+# Fessée légère déclinée selon la position de {receiver} (celle dans laquelle
+# iel la reçoit — voir le questionnaire de postures) et la contrainte, comme
+# demandé explicitement (ex. une fessée à quatre pattes).
+# ---------------------------------------------------------------------------
+
+_FESSEE_ACTION = "{actor} donne une fessée légère à {receiver}, à l'intensité validée ensemble avant de commencer."
+
+
+def _generate_fessee_variants() -> list[dict]:
+    variants = []
+    for position in _POSITIONS_LIST:
+        for restraint in ("libre", "mobile"):
+            intro = _restraint_intro(restraint, blindfold=False)
+            stance = _stance_text(position, "{receiver_e}")
+            description = f"{intro}{_FESSEE_ACTION} {{receiver_ref}} est {stance}."
+
+            practices = [(PRACTICE_DISCIPLINE, "donne")]
+            if restraint != "libre":
+                practices.append((PRACTICE_LIENS, "donne"))
+
+            accessory = _restraint_accessory(restraint) or _accessory_id("fouet_leger", required=False)
+
+            title = f"Fessée légère ({_POSITION_TITLES[position]}"
+            if restraint != "libre":
+                title += ", " + _RESTRAINT_LABELS[restraint]
+            title += ")"
+
+            variants.append(
+                _activity(
+                    f"fessee_{position}_{restraint}",
+                    CATEGORY_INTENSITE_PLUS,
+                    PHASE_INTENSE,
+                    title,
+                    description,
+                    4,
+                    duration=1,
+                    accessory=accessory,
+                    practices=practices,
+                    position=position,
+                )
+            )
+    return variants
+
+
+ACTIVITIES += (
+    _generate_caress_variants()
+    + _generate_positioned_acts()
+    + _generate_fessee_variants()
+)
 
 
 def get_activity(activity_id: str) -> dict | None:

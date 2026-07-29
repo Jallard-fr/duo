@@ -22,8 +22,10 @@ from .const import (
     DOMAIN,
     MOOD_OPTIONS,
     PHASES,
+    POSITIONS,
     PRACTICE_ANSWERS,
     SERVICE_CLEAR_PROFILE,
+    SERVICE_END_ENCOUNTER,
     SERVICE_REQUEST_SUGGESTION,
     SERVICE_RESET_SESSION,
     SERVICE_RESPOND_SUGGESTION,
@@ -31,6 +33,8 @@ from .const import (
     SERVICE_SET_BRAVE_TABOOS,
     SERVICE_SET_LINGERIE,
     SERVICE_SET_MOOD,
+    SERVICE_SET_PHASE,
+    SERVICE_SET_POSITION_LIMIT,
     SERVICE_SET_PRACTICE_LIMIT,
     SERVICE_SET_PREFERENCE,
     SERVICE_START_TIMER,
@@ -48,7 +52,7 @@ PLATFORMS = ["sensor", "select"]
 # aucune ressource Lovelace à ajouter manuellement.
 URL_BASE = "/duo_frontend"
 CARD_FILE = "duo-card.js"
-CARD_VERSION = "0.19.0"  # à incrémenter à chaque modification du JS
+CARD_VERSION = "0.20.0"  # à incrémenter à chaque modification du JS
 FRONTEND_KEY = f"{DOMAIN}_frontend_registered"
 
 SET_PREFERENCE_SCHEMA = vol.Schema(
@@ -103,6 +107,24 @@ SET_LINGERIE_SCHEMA = vol.Schema(
         vol.Required("items"): vol.All(cv.ensure_list, [cv.string]),
     }
 )
+
+SET_POSITION_LIMIT_SCHEMA = vol.Schema(
+    {
+        vol.Required("entry_id"): cv.string,
+        vol.Required("partner"): cv.string,
+        vol.Required("position"): vol.In(POSITIONS),
+        vol.Required("answer"): vol.In(PRACTICE_ANSWERS),
+    }
+)
+
+SET_PHASE_SCHEMA = vol.Schema(
+    {
+        vol.Required("entry_id"): cv.string,
+        vol.Required("phase"): vol.In(PHASES),
+    }
+)
+
+END_ENCOUNTER_SCHEMA = vol.Schema({vol.Required("entry_id"): cv.string})
 
 REQUEST_SUGGESTION_SCHEMA = vol.Schema(
     {
@@ -315,6 +337,23 @@ def _async_register_services(hass: HomeAssistant) -> None:
             call.data["partner"], call.data["key"], call.data["answer"]
         )
 
+    async def handle_set_position_limit(call: ServiceCall) -> None:
+        coordinator = _get_coordinator(hass, call.data["entry_id"])
+        coordinator.check_partner_permission(
+            call.data["partner"], call.context.user_id, what="ses postures"
+        )
+        await coordinator.async_set_position_limit(
+            call.data["partner"], call.data["position"], call.data["answer"]
+        )
+
+    async def handle_set_phase(call: ServiceCall) -> None:
+        coordinator = _get_coordinator(hass, call.data["entry_id"])
+        await coordinator.async_set_session_phase(call.data["phase"])
+
+    async def handle_end_encounter(call: ServiceCall) -> None:
+        coordinator = _get_coordinator(hass, call.data["entry_id"])
+        await coordinator.async_end_encounter()
+
     async def handle_set_accessories(call: ServiceCall) -> None:
         coordinator = _get_coordinator(hass, call.data["entry_id"])
         await coordinator.async_set_accessories(call.data["accessories"])
@@ -413,6 +452,18 @@ def _async_register_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN, SERVICE_SET_LINGERIE, handle_set_lingerie, schema=SET_LINGERIE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_POSITION_LIMIT,
+        handle_set_position_limit,
+        schema=SET_POSITION_LIMIT_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_PHASE, handle_set_phase, schema=SET_PHASE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_END_ENCOUNTER, handle_end_encounter, schema=END_ENCOUNTER_SCHEMA
     )
     hass.services.async_register(
         DOMAIN,

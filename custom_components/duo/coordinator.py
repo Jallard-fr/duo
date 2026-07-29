@@ -48,6 +48,7 @@ from .const import (
     PHASE_EXCITATION,
     PHASE_PRELIMINAIRES,
     PHASE_TARGET_COUNTS,
+    PRELIMINAIRES_INTENSITY_RANGE,
     PHASES,
     PRACTICE_ANSWER_NON,
     PRACTICE_ANSWER_OUI,
@@ -245,6 +246,7 @@ class DuoCoordinator:
             self.profile.setdefault("evening", {}).setdefault(partner, {})
             self.profile.setdefault("brave_taboos", {}).setdefault(partner, False)
             self.profile.setdefault("practice_limits", {}).setdefault(partner, {})
+            self.profile.setdefault("position_limits", {}).setdefault(partner, {})
 
         # Remise à zéro automatique chaque nuit à minuit (heure locale).
         self._midnight_unsub = async_track_time_change(
@@ -287,6 +289,15 @@ class DuoCoordinator:
         await self.async_save()
         self._signal()
 
+    async def async_set_position_limit(self, partner: str, position: str, answer: str) -> None:
+        """Enregistre la réponse d'un partenaire à une question du
+        questionnaire de postures : accepte-t-il/elle de RECEVOIR quelque
+        chose (une caresse, une fessée...) dans cette posture (ex.
+        position="position_a_quatre_pattes", answer="non")."""
+        self.profile.setdefault("position_limits", {}).setdefault(partner, {})[position] = answer
+        await self.async_save()
+        self._signal()
+
     async def async_set_mood(
         self,
         partner: str,
@@ -295,10 +306,14 @@ class DuoCoordinator:
         new_idea: str | None = None,
         notify: bool = True,
     ) -> None:
-        """Enregistre l'humeur du soir d'un partenaire et prévient l'autre."""
+        """Enregistre l'humeur du soir d'un partenaire et prévient l'autre.
+        Envoyer son humeur vaut aussi engagement pour la soirée (voir
+        both_engaged) : une fois les deux partenaires engagés, le premier
+        est prévenu que c'est parti (voir _async_notify_both_engaged)."""
         previous = self.profile.setdefault("moods", {}).get(partner)
         evening = self.profile.setdefault("evening", {}).setdefault(partner, {})
         previous_evening = dict(evening)
+        was_engaged = bool(evening.get("engaged"))
 
         self.profile["moods"][partner] = mood
 
@@ -308,6 +323,7 @@ class DuoCoordinator:
 
         evening["accessories"] = list(accessories or [])
         evening["new_idea"] = new_idea
+        evening["engaged"] = True
         evening["updated"] = dt_util.now().isoformat(timespec="seconds")
 
         await self.async_save()
@@ -320,6 +336,9 @@ class DuoCoordinator:
         )
         if notify and changed:
             await self._async_notify_partner(partner, mood, evening)
+
+        if notify and not was_engaged and self.both_engaged:
+            await self._async_notify_both_engaged(partner)
 
     def lingerie_worn(self, partner: str) -> list[str]:
         """Lingerie (catégorie accessories.py) que ce partenaire a indiqué
@@ -422,7 +441,70 @@ class DuoCoordinator:
             # proposées pour le tour de ce partenaire.
             "lingerie": lingerie,
             "lingerie_labels": [ACCESSORY_LABELS.get(item_id, item_id) for item_id in lingerie],
+            # Engagement pour la soirée (voir async_set_mood/both_engaged) :
+            # une fois les deux engagés, la carte masque l'humeur de chacun
+            # et n'affiche plus qu'un bouton pour terminer le rapport.
+            "engaged": bool(evening.get("engaged")),
         }
+
+    @property
+    def both_engaged(self) -> bool:
+        """Vrai une fois que les deux partenaires ont envoyé leur humeur
+        (= se sont engagés) pour la soirée en cours."""
+        evening = self.profile.get("evening", {})
+        return all(evening.get(p, {}).get("engaged") for p in self.partners)
+
+    async def _async_notify_both_engaged(self, second_partner: str) -> None:
+        """Prévient le premier partenaire engagé que le second vient de
+        l'être aussi, en rappelant les accessoires envisagés par chacun."""
+        first_partner = self.other_partner(second_partner)
+        services = self.notify_services_for(first_partner)
+        if not services:
+            _LOGGER.debug(
+                "Duo : aucun appareil de notification trouvé pour %s", first_partner
+            )
+            return
+
+        lines = [f"{second_partner} est prêt·e aussi, vous êtes tous les deux engagés pour ce soir 🔥"]
+        for partner in self.partners:
+            accessories = self.profile.get("evening", {}).get(partner, {}).get("accessories") or []
+            if accessories:
+                labels = [ACCESSORY_LABELS.get(item, item) for item in accessories]
+                lines.append(f"🧺 {partner} envisage : " + ", ".join(labels))
+
+        payload = {
+            "title": "Duo 💞 — C'est parti !",
+            "message": "\n".join(lines),
+            "data": {
+                "channel": "Duo",
+                "importance": "high",
+                "visibility": "private",
+                "notification_icon": "mdi:heart",
+                "tag": "duo_both_engaged",
+            },
+        }
+
+        for service in services:
+            try:
+                await self.hass.services.async_call(
+                    "notify", service, payload, blocking=False
+                )
+            except Exception:  # noqa: BLE001 - un appareil absent ne doit rien casser
+                _LOGGER.warning("Duo : échec de notification via notify.%s", service)
+
+    async def async_end_encounter(self) -> None:
+        """Marque la soirée comme terminée (bouton humoristique une fois les
+        deux engagés) : remet humeur, engagement et accessoires du soir à
+        zéro pour les deux partenaires, et réinitialise la session en cours."""
+        for partner in self.partners:
+            self.profile.setdefault("moods", {})[partner] = MOOD_NOT_TONIGHT
+            evening = self.profile.setdefault("evening", {}).setdefault(partner, {})
+            evening["engaged"] = False
+            evening["accessories"] = []
+            evening["new_idea"] = None
+            evening["updated"] = None
+        await self.async_save()
+        await self.async_reset_session()
 
     def _build_notification(self, partner: str, mood: str, evening: dict) -> tuple[str, str]:
         """Titre et corps du message envoyé à l'autre partenaire."""
@@ -490,6 +572,7 @@ class DuoCoordinator:
                 "accessories": [],
                 "new_idea": None,
                 "lingerie": [],
+                "engaged": False,
                 "updated": None,
             }
         await self.async_save()
@@ -580,6 +663,21 @@ class DuoCoordinator:
         )
         return answer == PRACTICE_ANSWER_NON and not self.brave_taboos(partner)
 
+    def _matches_position_limits(self, activity: dict, receiver: str) -> bool:
+        """Un "non" au questionnaire de postures exclut les activités qui
+        font recevoir quelque chose à ce partenaire dans cette posture
+        précise (voir position_limits et le champ ``position``), sauf s'il
+        a activé "braver ses interdits"."""
+        position = activity.get("position")
+        if not position:
+            return True
+        answer = (
+            self.profile.get("position_limits", {})
+            .get(receiver, {})
+            .get(position, PRACTICE_ANSWER_OUI)
+        )
+        return not (answer == PRACTICE_ANSWER_NON and not self.brave_taboos(receiver))
+
     def _practice_entries(self, activity: dict) -> list[tuple[str, str]]:
         """Normalise le(s) tag(s) practice d'une activité en une liste de
         paires (practice, rôle de l'acteur), rôle valant "donne", "recoit"
@@ -644,7 +742,9 @@ class DuoCoordinator:
         phase guidée en cours (sinon le tour n'a pas de sens — voir
         _async_register_level_progress) : la pénétration (doigtage, jouet)
         n'est proposée qu'aux 2 derniers tours, le sexe oral qu'à partir du
-        3e, sur PRELIMINAIRES_TARGET_COUNT tours au total."""
+        3e, et l'intensité proposée suit une fenêtre qui glisse avec le tour
+        (voir PRELIMINAIRES_INTENSITY_RANGE), sur PRELIMINAIRES_TARGET_COUNT
+        tours au total."""
         if activity.get("phase") != PHASE_PRELIMINAIRES or self.session_phase != PHASE_PRELIMINAIRES:
             return True
         target = self._target_count_for(PHASE_PRELIMINAIRES)
@@ -652,6 +752,9 @@ class DuoCoordinator:
         if activity.get("penetration") and round_number < target - 1:
             return False
         if self._activity_is_oral(activity) and round_number < 3:
+            return False
+        intensity_min, intensity_max = PRELIMINAIRES_INTENSITY_RANGE.get(round_number, (1, 5))
+        if not (intensity_min <= activity.get("intensity", 1) <= intensity_max):
             return False
         return True
 
@@ -697,6 +800,7 @@ class DuoCoordinator:
                 and self._matches_accessory(activity, actor_sex, receiver_sex)
                 and self._matches_preference(activity, proposer)
                 and self._matches_practice_limits(activity, turn, proposer)
+                and self._matches_position_limits(activity, proposer)
                 and self._matches_lingerie_state(activity, turn)
                 and self._matches_preliminaires_turn(activity, turn)
                 and (self._matches_phase(activity, effective_phase) if with_phase else True)
@@ -788,6 +892,18 @@ class DuoCoordinator:
         # "complète" — rien de plus à avancer automatiquement.
         self.phase_progress = {}
         self._preliminaires_penetration_done = {}
+
+    async def async_set_session_phase(self, phase: str) -> None:
+        """Change directement de phase (boutons « phase suivante/précédente »
+        de la carte) : réinitialise la progression comme le ferait un
+        passage automatique. session_phase n'est volontairement pas
+        persisté, donc pas d'async_save() ici."""
+        if phase not in PHASES:
+            return
+        self.session_phase = phase
+        self.phase_progress = {}
+        self._preliminaires_penetration_done = {}
+        self._signal()
 
     async def _async_log_history(self, activity: dict, response: str) -> None:
         history = self.profile.setdefault("history", [])

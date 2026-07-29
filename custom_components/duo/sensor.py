@@ -41,6 +41,27 @@ def _oral_label(sex: str | None) -> str:
     return "une stimulation orale"
 
 
+def _gender_suffix(sex: str | None) -> str:
+    """"e" pour accorder un adjectif au féminin (allongée, attachée...),
+    chaîne vide pour un homme ou un sexe inconnu — remplace la notation
+    "(e)", jugée pas assez personnelle."""
+    return "e" if sex == SEX_FEMME else ""
+
+
+def _second_mention(name: str, sex: str | None, other_sex: str | None) -> str:
+    """Pour éviter de répéter le prénom d'un même partenaire plusieurs fois
+    dans une activité : un pronom (il/elle) à la deuxième mention si le
+    couple est hétérosexuel, sinon le prénom est répété (un pronom serait
+    ambigu entre deux partenaires de même sexe)."""
+    if not sex or not other_sex or sex == other_sex:
+        return name
+    if sex == SEX_HOMME:
+        return "il"
+    if sex == SEX_FEMME:
+        return "elle"
+    return name
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
@@ -134,14 +155,25 @@ class DuoSuggestionSensor(DuoEntityBase):
         # un, se retrouve dans le texte de la description, pas dans le titre.
         title = activity["name"]
 
+        actor_sex = self.coordinator.sex_of(actor) if actor else None
+        receiver_sex = self.coordinator.sex_of(receiver) if receiver else None
+
         description = activity["description"]
         if actor and receiver:
             description = description.format(
                 actor=actor,
                 receiver=receiver,
-                oral_on_receiver=_oral_label(self.coordinator.sex_of(receiver)),
-                oral_on_actor=_oral_label(self.coordinator.sex_of(actor)),
+                actor_ref=_second_mention(actor, actor_sex, receiver_sex),
+                receiver_ref=_second_mention(receiver, receiver_sex, actor_sex),
+                actor_e=_gender_suffix(actor_sex),
+                receiver_e=_gender_suffix(receiver_sex),
+                oral_on_receiver=_oral_label(receiver_sex),
+                oral_on_actor=_oral_label(actor_sex),
             )
+        # La quantité (mode "count") est indiquée dans le texte lui-même,
+        # pas seulement dans une ligne de métadonnées séparée.
+        if activity.get("duration_mode") == "count":
+            description = f"{description} ({self.coordinator.current_count} {activity.get('count_unit')})"
         if accessory_label:
             description = f"{description} (avec {accessory_label})"
 
@@ -252,4 +284,8 @@ class DuoEveningSensor(DuoEntityBase):
             "session_phase_label": PHASE_LABELS.get(
                 self.coordinator.session_phase, self.coordinator.session_phase
             ),
+            # Une fois les deux partenaires engagés pour la soirée (voir
+            # async_set_mood), la carte masque l'humeur de chacun et
+            # n'affiche plus qu'un bouton pour terminer le rapport.
+            "both_engaged": self.coordinator.both_engaged,
         }

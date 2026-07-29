@@ -114,6 +114,23 @@ function flattenPracticeSteps() {
   return steps;
 }
 
+// Questionnaire de postures : contrairement au questionnaire de limites, la
+// question porte toujours sur la posture dans laquelle on REÇOIT quelque
+// chose (une caresse, une fessée à quatre pattes, par exemple), jamais sur
+// celle de qui agit — voir POSITION_* dans const.py.
+const POSITION_QUESTIONS = [
+  ["position_allonge", "Allongé(e)", "en étant allongé(e)"],
+  ["position_quatre_pattes", "À quatre pattes", "en étant à quatre pattes"],
+  [
+    "position_penche_avant",
+    "Penché(e) en avant",
+    "en étant penché(e) en avant, appuyé(e) sur un meuble ou un mur",
+  ],
+  ["position_debout", "Debout", "en étant debout"],
+  ["position_assis", "Assis(e)", "en étant assis(e), sur une chaise ou le bord du lit"],
+  ["position_genoux", "À genoux", "en étant à genoux"],
+];
+
 // Catalogue d'accessoires : lu dynamiquement depuis les attributs de
 // l'entité "soirée" (accessory_catalog / accessory_categories), exposés par
 // l'intégration à partir de custom_components/duo/accessories.py, qui reste
@@ -171,7 +188,31 @@ const THEME_OPTIONS = [
   ["sombre", "Nuit"],
   ["elegant", "Élégant"],
   ["doux", "Doux (pastel)"],
+  ["amour", "Amour (évolue avec la phase)"],
 ];
+
+// Thème "Amour" : fond sombre fixe, mais la couleur d'accent évolue avec la
+// phase en cours (voir PHASE_* dans const.py) — rose pâle en excitation,
+// rose flashy en préliminaires, rouge en intense, bleu en résolution.
+const AMOUR_PHASE_COLORS = {
+  phase_excitation: "#f4a6c6",
+  phase_preliminaires: "#ff2d95",
+  phase_intense: "#e0182b",
+  phase_resolution: "#5b7fe0",
+};
+
+function amourPreset(phase) {
+  const primary = AMOUR_PHASE_COLORS[phase] || AMOUR_PHASE_COLORS.phase_preliminaires;
+  return {
+    "--primary-color": primary,
+    "--card-background-color": "#170f13",
+    "--ha-card-background": "#170f13",
+    "--secondary-background-color": "#241620",
+    "--divider-color": "#3d2530",
+    "--primary-text-color": "#f7e9ee",
+    "--secondary-text-color": "#d1a8b8",
+  };
+}
 
 const THEME_PRESETS = {
   auto: null,
@@ -211,10 +252,13 @@ const THEME_PRESETS = {
     "--primary-text-color": "#332d4b",
     "--secondary-text-color": "#655c8a",
   },
+  // Valeur réelle non utilisée (voir themeCss) : juste là pour que
+  // THEME_PRESETS.hasOwnProperty("amour") reste vrai (stockage du choix).
+  amour: {},
 };
 
-function themeCss(themeKey) {
-  const preset = THEME_PRESETS[themeKey];
+function themeCss(themeKey, phase) {
+  const preset = themeKey === "amour" ? amourPreset(phase) : THEME_PRESETS[themeKey];
   if (!preset) return "";
   const vars = Object.entries(preset)
     .map(([k, v]) => `${k}: ${v};`)
@@ -491,6 +535,7 @@ class DuoCard extends HTMLElement {
       other,
       sessionPhase: attrs.session_phase,
       sessionPhaseLabel: attrs.session_phase_label,
+      bothEngaged: !!attrs.both_engaged,
     };
   }
 
@@ -506,10 +551,24 @@ class DuoCard extends HTMLElement {
       return `${esc(partner)} : ${Math.min(done, target)}/${target}`;
     };
 
+    const realPhases = PHASES.filter(([k]) => k);
+    const currentIndex = realPhases.findIndex(([k]) => k === data.sessionPhase);
+    const prevPhase = currentIndex > 0 ? realPhases[currentIndex - 1] : null;
+    const nextPhase =
+      currentIndex >= 0 && currentIndex < realPhases.length - 1 ? realPhases[currentIndex + 1] : null;
+
     return `
       <div class="section level-progress">
         <h3>Niveau : ${esc(data.sessionPhaseLabel || "-")}</h3>
         <div class="note">${progressFor(cfg.partner1)} · ${progressFor(cfg.partner2)} activités acceptées avant de passer au niveau suivant.</div>
+        <div class="actions">
+          <button class="secondary" id="prevPhase" data-phase="${prevPhase ? prevPhase[0] : ""}" ${prevPhase ? "" : "disabled"}>
+            ${prevPhase ? `◀ ${esc(prevPhase[1])}` : "◀ —"}
+          </button>
+          <button class="secondary" id="nextPhase" data-phase="${nextPhase ? nextPhase[0] : ""}" ${nextPhase ? "" : "disabled"}>
+            ${nextPhase ? `${esc(nextPhase[1])} ▶` : "— ▶"}
+          </button>
+        </div>
       </div>
     `;
   }
@@ -535,6 +594,7 @@ class DuoCard extends HTMLElement {
       <div class="actions">
         <button class="secondary" id="startCategoryQuiz">Questionnaire de préférences</button>
         <button class="secondary" id="startPracticeQuiz">Questionnaire de limites</button>
+        <button class="secondary" id="startPositionQuiz">Questionnaire de postures</button>
       </div>
     `;
   }
@@ -543,6 +603,7 @@ class DuoCard extends HTMLElement {
     const quiz = this._quiz;
     if (quiz.stepIndex < 0) return this._renderQuizPartnerPicker();
     if (quiz.kind === "practice") return this._renderPracticeQuizStep();
+    if (quiz.kind === "position") return this._renderPositionQuizStep();
     return this._renderCategoryQuizStep();
   }
 
@@ -605,6 +666,30 @@ class DuoCard extends HTMLElement {
           ${PRACTICE_ANSWER_CHOICES.map(
             ([value, choiceLabel]) =>
               `<button class="chip practice-choice" data-practice-value="${value}">${esc(choiceLabel)}</button>`
+          ).join("")}
+        </div>
+        <div class="actions">
+          <button class="secondary" id="cancelQuiz">Annuler</button>
+        </div>
+      </div>
+    `;
+  }
+
+  _renderPositionQuizStep() {
+    const quiz = this._quiz;
+    const step = POSITION_QUESTIONS[quiz.stepIndex];
+    if (!step) return "";
+    const [, label, phrase] = step;
+
+    return `
+      <div class="draft">
+        <h4>Postures de ${esc(quiz.partner)} — ${quiz.stepIndex + 1}/${POSITION_QUESTIONS.length}</h4>
+        <div class="note"><strong>${esc(label)}</strong></div>
+        <div class="note">Acceptes-tu de recevoir quelque chose (une caresse, une fessée...) ${esc(phrase)} ?</div>
+        <div class="chips">
+          ${PRACTICE_ANSWER_CHOICES.map(
+            ([value, choiceLabel]) =>
+              `<button class="chip position-choice" data-position-value="${value}">${esc(choiceLabel)}</button>`
           ).join("")}
         </div>
         <div class="actions">
@@ -747,6 +832,18 @@ class DuoCard extends HTMLElement {
         Renseigne-le dans les options de l'intégration Duo.</div></div>`;
     }
 
+    if (data.bothEngaged) {
+      return `
+        <div class="section">
+          <h3>Ce soir</h3>
+          <div class="note">${esc(cfg.partner1)} et ${esc(cfg.partner2)} sont tous les deux prêts pour ce soir 🔥</div>
+          <div class="actions">
+            <button id="endEncounter">🎉 On a terminé de s'envoyer en l'air</button>
+          </div>
+        </div>
+      `;
+    }
+
     const draftOpen = this._draft && this._draft.open;
     const lingerieOpen = this._lingerieDraft && this._lingerieDraft.open;
 
@@ -782,6 +879,12 @@ class DuoCard extends HTMLElement {
     const root = this._root;
     const data = this._eveningData();
     if (!data.me) return;
+
+    const endEncounterBtn = root.getElementById("endEncounter");
+    if (endEncounterBtn) {
+      endEncounterBtn.addEventListener("click", () => this._duoService("end_encounter", {}));
+    }
+    if (data.bothEngaged) return;
 
     root.querySelectorAll("[data-brave-partner]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -948,11 +1051,13 @@ class DuoCard extends HTMLElement {
     const total = timer ? timer.attributes.total_seconds || 1 : 1;
     const progressPct = Math.round((1 - remaining / Math.max(total, 1)) * 100);
     const themeKey = this._themeKey();
+    const sessionPhase = this._eveningData().sessionPhase;
+    const flame = themeKey === "amour" && sessionPhase === "phase_intense" ? "🔥 " : "";
 
     this._root.innerHTML = `
       <style>
         :host { display: block; }
-        ${themeCss(themeKey)}
+        ${themeCss(themeKey, sessionPhase)}
         ha-card { padding: 16px; font-family: var(--paper-font-body1_-_font-family, inherit); }
         .title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
         .title { font-size: 1.2em; font-weight: 600; }
@@ -1019,7 +1124,7 @@ class DuoCard extends HTMLElement {
       </style>
       <ha-card>
         <div class="title-row">
-          <div class="title">💞 Duo — ${cfg.partner1} &amp; ${cfg.partner2}</div>
+          <div class="title">${flame}💞 Duo — ${cfg.partner1} &amp; ${cfg.partner2}</div>
           <select class="theme-picker" id="themePicker" title="Thème de la carte">
             ${THEME_OPTIONS.map(
               ([k, l]) =>
@@ -1032,7 +1137,7 @@ class DuoCard extends HTMLElement {
         ${this._renderLevelProgress()}
 
         <div class="section">
-          <h3>Suggestion</h3>
+          <h3>${flame}Suggestion</h3>
           ${
             suggestion && suggestion.attributes.description
               ? `
@@ -1040,13 +1145,11 @@ class DuoCard extends HTMLElement {
               <div class="suggestion-name">${esc(suggestion.attributes.title || suggestion.state)}</div>
               <div class="suggestion-desc">${esc(suggestion.attributes.description)}</div>
               <div class="meta">
-                Catégorie : ${esc(suggestion.attributes.category || "-")} ·
-                Phase : ${esc(suggestion.attributes.phase_label || "-")} ·
-                Intensité : ${"♥".repeat(suggestion.attributes.intensity || 0)}${"♡".repeat(5 - (suggestion.attributes.intensity || 0))} ·
+                Intensité : ${"♥".repeat(suggestion.attributes.intensity || 0)}${"♡".repeat(5 - (suggestion.attributes.intensity || 0))}
                 ${
                   suggestion.attributes.duration_mode === "count"
-                    ? `${suggestion.attributes.count} ${esc(suggestion.attributes.count_unit || "actions")}`
-                    : `Durée : ${suggestion.attributes.duration_minutes} min`
+                    ? ""
+                    : ` · Durée : ${suggestion.attributes.duration_minutes} min`
                 }
                 ${
                   suggestion.attributes.position_label
@@ -1205,6 +1308,10 @@ class DuoCard extends HTMLElement {
     if (startPracticeQuizBtn) {
       startPracticeQuizBtn.addEventListener("click", () => startQuiz("practice"));
     }
+    const startPositionQuizBtn = root.getElementById("startPositionQuiz");
+    if (startPositionQuizBtn) {
+      startPositionQuizBtn.addEventListener("click", () => startQuiz("position"));
+    }
 
     const cancelQuizBtn = root.getElementById("cancelQuiz");
     if (cancelQuizBtn) {
@@ -1258,6 +1365,25 @@ class DuoCard extends HTMLElement {
         this._render();
       });
     });
+
+    root.querySelectorAll(".position-choice").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const quiz = this._quiz;
+        const step = POSITION_QUESTIONS[quiz.stepIndex];
+        if (!step) return;
+        const [position] = step;
+        quiz.answers[position] = btn.dataset.positionValue;
+        quiz.stepIndex += 1;
+        if (quiz.stepIndex >= POSITION_QUESTIONS.length) {
+          const partner = quiz.partner;
+          Object.entries(quiz.answers).forEach(([position, answer]) => {
+            this._duoService("set_position_limit", { partner, position, answer });
+          });
+          this._quiz = closedQuiz();
+        }
+        this._render();
+      });
+    });
     const historyDetails = root.getElementById("historyDetails");
     if (historyDetails) {
       historyDetails.addEventListener("toggle", () => {
@@ -1272,6 +1398,19 @@ class DuoCard extends HTMLElement {
       phasePicker.addEventListener("change", () => {
         this._selectedPhase = phasePicker.value;
       });
+    }
+
+    const prevPhaseBtn = root.getElementById("prevPhase");
+    if (prevPhaseBtn && !prevPhaseBtn.disabled) {
+      prevPhaseBtn.addEventListener("click", () =>
+        this._duoService("set_phase", { phase: prevPhaseBtn.dataset.phase })
+      );
+    }
+    const nextPhaseBtn = root.getElementById("nextPhase");
+    if (nextPhaseBtn && !nextPhaseBtn.disabled) {
+      nextPhaseBtn.addEventListener("click", () =>
+        this._duoService("set_phase", { phase: nextPhaseBtn.dataset.phase })
+      );
     }
 
     const requestBtn = root.getElementById("request");

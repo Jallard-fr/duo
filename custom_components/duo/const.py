@@ -191,10 +191,14 @@ POSITION_LABELS = {
 # au couple.
 #
 # La phase Préliminaires compte volontairement plus de tours (5, contre 3
-# ailleurs) car deux règles de progression s'y appliquent, par acteur :
+# ailleurs) car trois règles de progression s'y appliquent, par acteur :
 # - la pénétration (doigtage, jouet...) n'est proposée qu'aux 2 derniers
 #   tours (4 et 5), et est garantie sur au moins l'un des deux ;
-# - le sexe oral n'est proposé qu'à partir du 3e tour.
+# - le sexe oral n'est proposé qu'à partir du 3e tour ;
+# - l'intensité proposée suit elle aussi l'avancement du tour (voir
+#   PRELIMINAIRES_INTENSITY_RANGE) : une fenêtre de 3 cœurs qui glisse d'au
+#   plus un cœur par tour, pour une montée en intensité progressive plutôt
+#   que de piocher n'importe quelle intensité dès le début.
 # Voir DuoCoordinator._matches_preliminaires_turn et
 # DuoCoordinator._preliminaires_penetration_done.
 # ---------------------------------------------------------------------------
@@ -205,6 +209,15 @@ MAX_REROLLS = 4
 PRELIMINAIRES_TARGET_COUNT = 5
 PHASE_TARGET_COUNTS = {
     PHASE_PRELIMINAIRES: PRELIMINAIRES_TARGET_COUNT,
+}
+
+# {tour: (intensité min, intensité max)}, en cœurs (1 à 5).
+PRELIMINAIRES_INTENSITY_RANGE = {
+    1: (1, 2),
+    2: (1, 3),
+    3: (2, 4),
+    4: (3, 5),
+    5: (3, 5),
 }
 
 # Bornes du tirage aléatoire pour toute activité quantifiée en nombre
@@ -286,6 +299,9 @@ SERVICE_CLEAR_PROFILE = "clear_profile"
 SERVICE_SET_BRAVE_TABOOS = "set_brave_taboos"
 SERVICE_SET_PRACTICE_LIMIT = "set_practice_limit"
 SERVICE_SET_LINGERIE = "set_lingerie"
+SERVICE_SET_POSITION_LIMIT = "set_position_limit"
+SERVICE_SET_PHASE = "set_phase"
+SERVICE_END_ENCOUNTER = "end_encounter"
 
 SIGNAL_UPDATE = "duo_update_{entry_id}"
 
@@ -305,7 +321,12 @@ DEFAULT_PROFILE = {
     # qu'il désactive à nouveau ce mode.
     "brave_taboos": {},  # {partner: bool}
     "practice_limits": {},  # {partner: {"oral_donne": "oui"|"a_voir"|"non", ...}}
+    # Limites par posture (voir POSITION_* ci-dessus) : la question porte
+    # toujours sur la posture dans laquelle ce partenaire REÇOIT quelque
+    # chose (une caresse, une fessée...), jamais sur celle de l'autre.
+    "position_limits": {},  # {partner: {"position_allonge": "oui"|"a_voir"|"non", ...}}
     # État de la soirée en cours, remis à zéro chaque nuit à minuit.
-    # {partner: {"accessories": [...], "new_idea": str|None, "updated": iso}}
+    # {partner: {"accessories": [...], "new_idea": str|None, "lingerie": [...],
+    #            "engaged": bool, "updated": iso}}
     "evening": {},
 }
