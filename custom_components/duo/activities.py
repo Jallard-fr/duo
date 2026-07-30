@@ -80,13 +80,7 @@ Each activity carries:
   given receveur·se, on ``phase_preliminaires`` or ``phase_intense``, no
   other activity of that same group is proposed again to that receveur·se
   for the rest of that phase this session — a soft cap ("at most once"),
-  never a guarantee ("at least once"): nothing forces it to happen. The
-  "oral" group is also read the other way round by
-  DuoCoordinator._matches_fellation_prerequisite: fellation (oral where the
-  receveur·se is a man) isn't mandatory, but once it isn't refused by the
-  couple, the named Kama Sutra positions involving a male partner (see
-  _generate_kamasutra_positions) stay out of the running until it has
-  happened at least once, in Préliminaires or Intense.
+  never a guarantee ("at least once"): nothing forces it to happen.
 """
 
 from .const import (
