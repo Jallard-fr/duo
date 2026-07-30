@@ -870,6 +870,26 @@ class DuoCoordinator:
             return True
         return receiver not in self._once_done_by_phase.get((phase, group), set())
 
+    def _oral_mandatory_wanted(self) -> bool:
+        """Vrai si les deux partenaires ont explicitement répondu "Oui" à la
+        question de suivi du questionnaire de limites ("oral_obligatoire",
+        posée seulement si le sexe oral a été accepté — voir
+        flattenPracticeSteps côté carte) : le sexe oral ne devient garanti
+        que sur cet accord mutuel explicite, jamais sur la seule envie d'un
+        seul partenaire."""
+        return all(
+            self.profile.get("practice_limits", {}).get(partner, {}).get("oral_obligatoire") == "oui"
+            for partner in self.partners
+        )
+
+    def _oral_already_happened(self) -> bool:
+        """Vrai si une activité orale a déjà été acceptée cette session, en
+        Préliminaires ou en Intense (voir _once_done_by_phase, mis à jour
+        par _register_once_cap à l'acceptation)."""
+        return bool(self._once_done_by_phase.get((PHASE_PRELIMINAIRES, "oral"))) or bool(
+            self._once_done_by_phase.get((PHASE_INTENSE, "oral"))
+        )
+
     async def async_request_suggestion(
         self,
         turn: str | None = None,
@@ -904,8 +924,34 @@ class DuoCoordinator:
             and not self._preliminaires_penetration_done.get(turn, False)
         )
 
+        # Sexe oral garanti au moins une fois cette session (jamais plus tôt
+        # que nécessaire, jamais si les deux partenaires ne l'ont pas
+        # explicitement voulu — voir _oral_mandatory_wanted) : on le force
+        # sur le dernier tour où il reste possible, d'abord en Préliminaires
+        # (dernier tour), puis en dernier recours en Intense (dernier tour
+        # de l'étape "early").
+        force_oral = (
+            self._oral_mandatory_wanted()
+            and not self._oral_already_happened()
+            and (
+                (
+                    effective_phase == PHASE_PRELIMINAIRES
+                    and self.session_phase == PHASE_PRELIMINAIRES
+                    and self.phase_progress.get(turn, 0) + 1 >= self._target_count_for(PHASE_PRELIMINAIRES)
+                )
+                or (
+                    effective_phase == PHASE_INTENSE
+                    and self.session_phase == PHASE_INTENSE
+                    and self.phase_progress.get(turn, 0) + 1
+                    >= self._target_count_for(PHASE_INTENSE) - 2
+                )
+            )
+        )
+
         def _eligible(activity: dict, *, with_phase: bool) -> bool:
             if force_penetration and not activity.get("penetration"):
+                return False
+            if force_oral and not self._activity_is_oral(activity):
                 return False
             return (
                 self._matches_sex(activity, actor_sex, receiver_sex)

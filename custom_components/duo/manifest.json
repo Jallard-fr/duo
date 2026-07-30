@@ -9,7 +9,7 @@
   "issue_tracker": "https://github.com/Jallard-fr/duo/issues",
   "iot_class": "calculated",
   "requirements": [],
-  "version": "0.29.0",
+  "version": "0.30.0",
   "dependencies": [
     "frontend",
     "http"

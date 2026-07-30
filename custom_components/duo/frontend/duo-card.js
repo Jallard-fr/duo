@@ -124,7 +124,14 @@ const PRACTICE_ANSWER_CHOICES = [
   ["non", "Non"],
 ];
 
-function flattenPracticeSteps() {
+// Si le sexe oral (faire ou recevoir) a été accepté, une question de suivi
+// demande si ce partenaire souhaite qu'il soit garanti au moins une fois ce
+// soir plutôt que de rester purement aléatoire (voir DuoCoordinator :
+// il ne devient obligatoire, en Préliminaires ou en Intense, que si les
+// DEUX partenaires répondent "Oui" ici — jamais sur la seule envie d'un
+// seul). Stockée sous la clé "oral_obligatoire", au même titre que les
+// autres réponses du questionnaire de limites.
+function flattenPracticeSteps(answers) {
   const steps = [];
   PRACTICE_GROUPS.forEach((group) => {
     group.questions.forEach((question) => {
@@ -135,6 +142,19 @@ function flattenPracticeSteps() {
         text: question.text,
       });
     });
+    if (group.key === "oral") {
+      const accepted =
+        (answers && answers.oral_donne === "oui") || (answers && answers.oral_recoit === "oui");
+      if (accepted) {
+        steps.push({
+          groupKey: "oral",
+          groupLabel: group.label,
+          role: "obligatoire",
+          text: () =>
+            "Puisque le sexe oral est autorisé, veux-tu qu'il soit garanti au moins une fois ce soir (en Préliminaires ou en Intense) ? Il ne le deviendra que si vous répondez tous les deux Oui — sinon, ça reste au hasard.",
+        });
+      }
+    }
   });
   return steps;
 }
@@ -717,7 +737,7 @@ class DuoCard extends HTMLElement {
 
   _renderPracticeQuizStep() {
     const quiz = this._quiz;
-    const steps = flattenPracticeSteps();
+    const steps = flattenPracticeSteps(quiz.answers);
     const step = steps[quiz.stepIndex];
     if (!step) return "";
 
@@ -1450,7 +1470,7 @@ class DuoCard extends HTMLElement {
     root.querySelectorAll(".practice-choice").forEach((btn) => {
       btn.addEventListener("click", () => {
         const quiz = this._quiz;
-        const steps = flattenPracticeSteps();
+        const steps = flattenPracticeSteps(quiz.answers);
         const step = steps[quiz.stepIndex];
         if (!step) return;
         quiz.answers[`${step.groupKey}_${step.role}`] = btn.dataset.practiceValue;
