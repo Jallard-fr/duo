@@ -143,11 +143,28 @@ La carte Lovelace est servie automatiquement par l'intégration (`/duo_frontend/
 3. Dans les **options** de l'intégration (Paramètres → Appareils et services → Duo → Configurer), vous pouvez à tout moment :
    - ajuster l'association personne/notify ;
    - surcharger manuellement les services `notify.*` utilisés ;
-   - indiquer le **chemin du tableau de bord** contenant la carte (utilisé comme lien cliquable dans les notifications mobiles ; par défaut `/lovelace/0`) ;
+   - indiquer le **chemin du tableau de bord** contenant la carte (voir "Trouver le chemin du tableau de bord" ci-dessous) ;
    - **modifier la liste des accessoires du couple** (séparés par des virgules) — sans passer par la carte.
 4. Notez l'`entry_id` généré si besoin (visible via **Outils de développement → Modèles** avec `{{ config_entries()|selectattr('domain','eq','duo')|map(attribute='entry_id')|list }}`).
 
 Si une personne Home Assistant est associée à chaque partenaire, les préférences, limites, postures et le mode "braver ses interdits" ne sont modifiables que par la personne concernée — comme pour l'humeur du soir.
+
+#### Trouver le chemin du tableau de bord
+
+Ce champ des options (`dashboard_path`) sert de lien direct vers la carte Duo : c'est l'adresse qui s'ouvre quand on tape le corps d'une notification, ou qu'on appuie sur `😏 Ça m'intéresse` (voir "Notifications mobiles actionnables" plus bas). Ce n'est **pas** une adresse complète : pas de `https://...`, seulement le chemin qui vient après l'adresse de votre Home Assistant.
+
+**La façon la plus simple et la plus fiable de le trouver** : ouvrez, dans un navigateur, l'onglet du tableau de bord où se trouve la carte Duo, puis lisez la barre d'adresse — tout ce qui suit l'adresse de votre Home Assistant (et avant un éventuel `?...`) est le chemin à copier dans le champ.
+
+Il se compose en général de deux morceaux séparés par un `/` :
+
+1. le chemin du **tableau de bord** lui-même (ex. `maison` si vous avez créé un tableau de bord nommé "Maison" avec ce chemin d'URL) ;
+2. le chemin de l'**onglet** (la vue) qui contient la carte, si le tableau de bord en a plusieurs (ex. `duo` si vous avez nommé cet onglet ainsi dans son URL).
+
+**Exemple** : un tableau de bord "Maison" dont le chemin d'URL est `maison`, avec un onglet dont le chemin d'URL est `duo`, donne le champ `/maison/duo`.
+
+Ces chemins d'URL se règlent, si besoin, en éditant le tableau de bord (icône crayon en haut à droite du tableau de bord, en mode édition) : un premier réglage pour le tableau de bord lui-même, un second par onglet en cliquant dessus. Mais consulter la barre d'adresse en visitant simplement la page reste plus rapide.
+
+Si le champ est laissé vide, Duo utilise `/lovelace/0` par défaut — le tout premier onglet du tableau de bord généré automatiquement par Home Assistant, celui que vous obtenez tant que vous n'avez créé aucun tableau de bord personnalisé.
 
 ### Ajouter la carte au tableau de bord
 
