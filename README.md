@@ -37,19 +37,18 @@ Le jeu suit une progression guidée en 4 étapes, comme une montée en températ
 |---|---|
 | 🌙 **Excitation** | Encore habillés, on commence à se stimuler (ex. une tenue sexy) |
 | 💋 **Préliminaires** | Contacts avec les zones érogènes : baisers, caresses des doigts ou de la bouche |
-| 🔥 **Intense** | Positions nommées, jouet vibrant, sexe oral ou fessée en début de phase, doigtage une fois au 1er tour |
+| 🔥 **Intense** | Positions nommées, jouet vibrant, sexe oral ou fessée en début de phase |
 | 🌊 **Résolution** | Retour au calme, tendresse après le rapport |
 
 - 🥉🥈🥇 Chaque partenaire doit se faire accepter un nombre d'activités dans la phase en cours avant de passer automatiquement à la suivante : **3 tours** pour Excitation/Résolution.
 - 💜 **Préliminaires en compte 5**, avec sa propre montée en intensité :
   - le 🗣️ sexe oral n'apparaît qu'à partir du **3ᵉ tour** ;
-  - la 👉 pénétration (doigtage, jouet) n'apparaît qu'aux **2 derniers tours (4 et 5)** — et elle est **garantie** : si elle n'est encore jamais arrivée au tour 5, Duo la force plutôt que de la laisser au hasard ;
+  - la 👉 pénétration n'apparaît qu'aux **2 derniers tours (4 et 5)** — et elle est **garantie** : si elle n'est encore jamais arrivée au tour 5, Duo la force plutôt que de la laisser au hasard ;
   - l'intensité (en petits cœurs ♥) grimpe elle aussi crescendo, dans une fenêtre de 3 cœurs qui ne bouge que d'un cran par tour (ex. seulement 1 à 3 cœurs au 2ᵉ tour).
 - 🔥 **Intense en compte 4**, et ne propose que de la pénétration (positions, jouet), du sexe oral ou une fessée, en deux étapes :
-  - le 🖐️ tour 1, en plus, peut proposer un doigtage intense — une seule fois maximum, jamais obligatoire ;
-  - les 🧊 tours 1 et 2 proposent du sexe oral (toujours avant la pénétration à venir), une pénétration avec un jouet vibrant (vibromasseur, godemichet...) ou une fessée légère ;
+  - les 🧊 tours 1 et 2 proposent du sexe oral, une pénétration avec un jouet vibrant (vibromasseur, godemichet...) ou une fessée légère ;
   - les 🌀 tours 3 et 4 proposent des **positions nommées** (Missionnaire, Levrette, Andromaque, Yab-Yum...), avec leur vrai nom et une explication de leur mise en place — voir plus bas.
-- 🗣️ **Fellation, cunnilingus et doigtage intense sont rationnés** : chacun n'est proposé qu'**une seule fois par personne** sur toute la phase Préliminaires, et à nouveau une seule fois sur toute la phase Intense — jamais répété en boucle, et jamais obligatoire non plus (juste un plafond, pas une garantie).
+- 🗣️ **Le sexe oral n'est jamais obligatoire** : ni la fellation ni le cunnilingus ne sont forcés durant une séance, et chacun n'est de toute façon proposé qu'**une seule fois par personne** sur toute la phase Préliminaires, puis à nouveau une seule fois sur toute la phase Intense (jamais répété en boucle). En revanche, quand elle n'a pas été refusée dans le questionnaire de limites, **la fellation doit être arrivée au moins une fois avant toute pénétration avec le sexe de l'homme** (positions nommées) — les positions correspondantes restent donc de côté jusque-là.
 - ⏭️⏮️ **Deux boutons**, chacun affichant le nom de la phase visée, permettent de sauter directement en avant ou en arrière si le couple préfère reprendre la main plutôt que de suivre la progression automatique.
 
 ### 📋 Les questionnaires et les curseurs

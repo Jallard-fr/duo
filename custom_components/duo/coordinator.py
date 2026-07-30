@@ -58,6 +58,7 @@ from .const import (
     PRACTICE_ANSWER_OUI,
     PRACTICE_JOUETS,
     PRACTICE_ORAL,
+    SEX_HOMME,
     SEX_INDIFFERENT,
     SIGNAL_UPDATE,
     STATUS_ACCEPTED,
@@ -870,6 +871,33 @@ class DuoCoordinator:
             return True
         return receiver not in self._once_done_by_phase.get((phase, group), set())
 
+    def _matches_fellation_prerequisite(self, activity: dict, actor: str, receiver: str) -> bool:
+        """Le sexe oral n'est jamais obligatoire en soi, mais quand la
+        fellation n'a pas été refusée par le couple, elle doit être arrivée
+        au moins une fois (en Préliminaires ou en Intense) avant toute
+        pénétration avec le sexe de l'homme — les positions nommées de la
+        phase Intense (voir _generate_kamasutra_positions), jamais la
+        pénétration avec un jouet, qui n'a pas ce prérequis. Si la fellation
+        est refusée par l'un des deux partenaires, la règle ne s'applique
+        pas : elle ne pourrait jamais être satisfaite, et bloquerait alors
+        la pénétration pour toujours."""
+        if activity.get("phase") != PHASE_INTENSE or activity.get("intense_stage") != "late":
+            return True
+        if activity.get("actor_sex") == SEX_HOMME:
+            male_partner, other_partner = actor, receiver
+        elif activity.get("receiver_sex") == SEX_HOMME:
+            male_partner, other_partner = receiver, actor
+        else:
+            return True
+        if self._practice_refused(male_partner, PRACTICE_ORAL, "recoit") or self._practice_refused(
+            other_partner, PRACTICE_ORAL, "donne"
+        ):
+            return True
+        return any(
+            male_partner in self._once_done_by_phase.get((phase, "oral"), set())
+            for phase in (PHASE_PRELIMINAIRES, PHASE_INTENSE)
+        )
+
     async def async_request_suggestion(
         self,
         turn: str | None = None,
@@ -917,6 +945,7 @@ class DuoCoordinator:
                 and self._matches_preliminaires_turn(activity, turn)
                 and self._matches_intense_turn(activity, turn)
                 and self._matches_once_cap(activity, proposer)
+                and self._matches_fellation_prerequisite(activity, turn, proposer)
                 and (self._matches_phase(activity, effective_phase) if with_phase else True)
             )
 
